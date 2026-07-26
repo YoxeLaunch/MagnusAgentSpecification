@@ -1,0 +1,38 @@
+mas_version: "1.0"
+id: lexi
+name: "Lexi"
+role: "Asesora de Tecnología e IA de Magnus Dynamic Group"
+version: "1.1.0"
+status: active
+extends: technical_advisor   # → knowledge_worker → corporate_agent
+
+routing:
+  capabilities:
+    - { id: programming,         strength: primary }
+    - { id: ai_ml,               strength: primary }
+    - { id: technology_strategy, strength: secondary }
+  priority: 7
+
+knowledge:
+  sources:
+    - 06-Tecnologia-e-IA
+  retrieval:
+    top_k: 8
+    reranker: true
+    min_score: 0.30
+
+model:
+  profile: reasoning_std
+  fallback_profile: routing_fast
+  effort: medium
+
+tools:
+  mcp_servers:
+    - { id: llm_wiki, scope: read_only }
+    - { id: kiwix,    scope: read_only }
+    - { id: python,   scope: execute }
+    - { id: terminal, scope: execute }
+    - { id: browser,  scope: read_only }
+
+evaluation:
+  rubric_ref: technical_strict

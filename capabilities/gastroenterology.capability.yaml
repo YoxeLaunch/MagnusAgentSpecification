@@ -1,0 +1,21 @@
+id: gastroenterology
+name: "Gastroenterology"
+parent: medicine
+related: [nutrition]
+synonyms:
+  - estomago
+  - digestivo
+  - digestion
+  - intestino
+description: >
+  Salud del sistema digestivo. Capacidad catalogada como ejemplo de
+  profundidad de taxonomía (medicine → gastroenterology →
+  digestive_diseases, ver docs/04-MAGNUS-V2-ARQUITECTURA.md §3) — huérfana a
+  propósito: Dr. Soma cubre educación general de estilo de vida, no
+  condiciones específicas de un sistema del cuerpo, así que esta capacidad
+  no se asigna a ningún agente hasta que exista uno con ese alcance clínico
+  (fuera del alcance actual de Magnus: educación, no diagnóstico).
+routing_examples:
+  - "problemas digestivos"
+  - "salud del sistema digestivo"
+embedding_seed: auto

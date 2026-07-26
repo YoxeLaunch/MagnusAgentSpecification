@@ -1,0 +1,19 @@
+id: digestive_diseases
+name: "Digestive Diseases"
+parent: gastroenterology
+synonyms:
+  - gastritis
+  - reflujo
+  - colon irritable
+description: >
+  Condiciones específicas del sistema digestivo (p. ej. gastritis, reflujo,
+  colon irritable). Tercer nivel de la cadena medicine → gastroenterology →
+  digestive_diseases — capacidad de ejemplo, huérfana a propósito (ver
+  gastroenterology.capability.yaml). Si algún día Magnus incorpora un agente
+  con alcance clínico específico, este es el nivel al que se le asignaría
+  como `primary`, dejando `medicine`/`gastroenterology` como capacidades más
+  generales que ese mismo agente también podría declarar como `secondary`.
+routing_examples:
+  - "tengo gastritis, qué la empeora"
+  - "reflujo constante después de comer"
+embedding_seed: auto

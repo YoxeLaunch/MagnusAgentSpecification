@@ -1,0 +1,39 @@
+mas_version: "1.0"
+id: dr_soma
+name: "Dr. Soma"
+role: "Asesor de Salud Corporal de Magnus Dynamic Group"
+version: "1.1.0"
+status: active
+extends: health_advisor   # → knowledge_worker → corporate_agent
+
+routing:
+  capabilities:
+    - { id: medicine,  strength: primary }
+    - { id: nutrition, strength: secondary }
+    - { id: fitness,   strength: secondary }
+  priority: 7
+
+knowledge:
+  sources:
+    - 02-Salud-Corporal
+  retrieval:
+    top_k: 8
+    reranker: true
+    min_score: 0.30
+
+model:
+  profile: reasoning_std
+  fallback_profile: routing_fast
+  effort: medium
+
+tools:
+  mcp_servers:
+    - { id: llm_wiki, scope: read_only }
+    - { id: kiwix,    scope: read_only }
+
+permissions:
+  policy_ref: health_advisor_readonly   # distinto del policy_ref por defecto de HealthAdvisor
+
+evaluation:
+  rubric_ref: health_strict
+  rigor: 9   # sube el rigor base de HealthAdvisor (8) — un error en salud tiene consecuencias reales

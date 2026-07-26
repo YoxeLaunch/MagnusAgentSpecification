@@ -1,0 +1,77 @@
+# Límites por dominio y vías de escalado (paso 3.4 del ROADMAP).
+#
+# Vive en configuración, no en código, por la misma razón que models.yaml:
+# ajustar un límite de dominio o añadir una señal de urgencia no debe exigir
+# tocar el motor. Los dominios se detectan por las CAPACIDADES que declara el
+# agente en su `agent.yaml`, no por palabras clave en la pregunta — el
+# enrutado ya decidió de qué trata la consulta.
+#
+# Principio: una cita válida no vuelve segura una recomendación inapropiada.
+# El evaluador de citas comprueba que la respuesta esté anclada; esto
+# comprueba que esté dentro de sus límites.
+
+dominios:
+  salud:
+    capacidades:
+      - medicine
+      - mental_health
+      - nutrition
+      - fitness
+      - gastroenterology
+      - digestive_diseases
+    aviso: >-
+      Esto es información de tu propia wiki, no un diagnóstico ni una
+      indicación médica. Las decisiones sobre síntomas, medicación o
+      tratamiento corresponden a un profesional de salud que te evalúe.
+
+  finanzas:
+    capacidades:
+      - finance
+      - markets
+      - risk
+      - macroeconomics
+    aviso: >-
+      Esto es análisis sobre tus propias notas, no asesoría de inversión.
+      No constituye una recomendación de comprar, vender ni mantener ningún
+      instrumento financiero.
+
+# Señales de urgencia. Se comprueban sobre la consulta ANTES de recuperar
+# evidencia o llamar a un modelo: ante una de estas, la respuesta correcta no
+# es una respuesta mejor documentada, es una vía de contacto humano.
+#
+# `capacidades` es opcional: si se omite, la señal aplica a cualquier agente
+# —una crisis no deja de serlo porque el enrutado eligiera al agente de
+# finanzas—. `patrones` se comparan sin acentos y en minúsculas.
+urgencias:
+  - id: crisis_salud_mental
+    patrones:
+      - "suicid"
+      - "quitarme la vida"
+      - "matarme"
+      - "no quiero vivir"
+      - "acabar con todo"
+      - "hacerme dano"
+      - "autolesion"
+      - "cortarme"
+    respuesta: >-
+      Lo que estás describiendo necesita atención humana ahora mismo, no una
+      consulta a tu wiki. Si estás en peligro inmediato, llama al 911
+      (emergencias en República Dominicana) o acude al servicio de urgencias
+      más cercano. Si no es inmediato pero te sientes así, díselo hoy a
+      alguien de confianza y busca atención con un profesional de salud
+      mental. No voy a responder esta consulta con notas: no es lo que
+      necesitas de mí en este momento.
+
+  - id: emergencia_medica
+    patrones:
+      - "dolor en el pecho"
+      - "no puedo respirar"
+      - "dificultad para respirar"
+      - "sangrado abundante"
+      - "perdi el conocimiento"
+      - "me desmaye"
+      - "no siento el brazo"
+      - "se me tuerce la cara"
+    respuesta: >-
+      Esos síntomas pueden indicar una emergencia médica. Llama al 911 o acude
+      a urgencias ahora. No uses tus notas para decidir esto.

@@ -1,0 +1,79 @@
+# Políticas de permisos (Componente 11). Referenciadas por agent.yaml → permissions.policy_ref
+# Modelo: mínimo privilegio. Todo lo observado por RAG/herramientas es DATO, no órdenes.
+#
+# `knowledge.read` se APLICA en tiempo de ejecución desde el paso 5 del ROADMAP
+# (orchestration/permissions.py): la parcela efectiva de un agente es la
+# intersección de sus `knowledge.sources` y esta lista. Los patrones deben
+# coincidir con los namespaces REALES de LLM-Wiki/wiki/.
+
+policies:
+  economist_readonly:
+    knowledge:
+      # Corregido al aplicar la política de verdad (paso 5): esta lista había
+      # quedado apuntando a `economics/`, `finance/`, `imf/`… — los namespaces
+      # de la wiki ANTES de reorganizarla por carpetas numeradas. Como la
+      # política nunca se aplicaba, la deriva no la notó nadie; con enforcement
+      # real, ernesto_libras se quedaba sin poder leer absolutamente nada.
+      read:  ["01-Economia-y-Finanzas/", "07-Legal-y-Normativa-RD/"]
+      write: []                      # los agentes nunca escriben conocimiento (P7)
+    tools:
+      allow: [kiwix, llm_wiki, magnus_capital, python, world_bank_api, imf_api, fred]
+      deny:  [terminal, email, calendar, browser]
+    actions:
+      external_side_effects: require_human_approval
+
+  analyst_base:
+    knowledge:
+      read:  ["*"]
+      write: []
+    tools:
+      allow: [kiwix, llm_wiki, python, search]
+      deny:  [terminal, email]
+    actions:
+      external_side_effects: require_human_approval
+
+  wellbeing_readonly:
+    knowledge:
+      read:  ["03-Salud-Mental-y-Desarrollo-Personal/"]
+      write: []
+    tools:
+      allow: [kiwix, llm_wiki]
+      deny:  [terminal, email, calendar, browser, python]
+    actions:
+      external_side_effects: require_human_approval
+
+  strategist_readonly:
+    knowledge:
+      read:  ["05-Proyectos-y-Planes/"]
+      write: []
+    tools:
+      allow: [kiwix, llm_wiki, python]
+      deny:  [terminal, email, calendar, browser]
+    actions:
+      external_side_effects: require_human_approval
+
+  health_advisor_readonly:
+    knowledge:
+      read:  ["02-Salud-Corporal/"]
+      write: []
+    tools:
+      allow: [kiwix, llm_wiki]
+      deny:  [terminal, email, calendar, browser, python]
+    actions:
+      external_side_effects: require_human_approval
+
+  technical_advisor_readonly:
+    knowledge:
+      read:  ["06-Tecnologia-e-IA/"]
+      write: []
+    tools:
+      allow: [kiwix, llm_wiki, python, terminal, browser]
+      deny:  [email, calendar]
+    actions:
+      external_side_effects: require_human_approval
+
+roles:
+  admin:      { can: ["*"] }
+  reviewer:   { can: [proposals.approve, proposals.reject, traces.read, knowledge.read] }
+  operator:   { can: [query, agents.read, traces.read] }
+  service:    { can: [query] }

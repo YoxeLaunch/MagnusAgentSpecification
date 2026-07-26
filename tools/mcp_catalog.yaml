@@ -1,0 +1,45 @@
+# Catálogo central de servidores/herramientas MCP conocidos por el runtime.
+# Ver docs/04-MAGNUS-V2-ARQUITECTURA.md §8. Cada agente declara en
+# agent.yaml::tools.mcp_servers[] cuáles usa y con qué scope; AgentRegistry
+# valida (referencial) que el id exista aquí y que el scope esté entre los
+# soportados por ese servidor. Los ids coinciden deliberadamente con los ya
+# usados en tools.allow/deny y en configs/permissions.yaml — no se renombran
+# para no duplicar la lista blanca en dos formatos distintos.
+
+servers:
+  llm_wiki:
+    description: "Acceso de solo lectura a la LLM Wiki vía RAG (nunca acceso directo al store)."
+    scopes: [read_only]
+  kiwix:
+    description: "Consulta de fuentes offline curadas (ZIM)."
+    scopes: [read_only]
+  magnus_capital:
+    description: "Herramienta interna de cálculo financiero."
+    scopes: [read_only, execute]
+  python:
+    description: "Ejecución de Python en sandbox, sin red ni escritura fuera del sandbox."
+    scopes: [execute]
+  terminal:
+    description: "Comandos de shell en sandbox de desarrollo, nunca en producción real."
+    scopes: [execute]
+  browser:
+    description: "Navegación de solo lectura — sin envío de formularios ni credenciales."
+    scopes: [read_only]
+  imf_api:
+    description: "Series de datos públicos del FMI."
+    scopes: [read_only]
+  world_bank_api:
+    description: "Series de datos públicos del Banco Mundial."
+    scopes: [read_only]
+  fred:
+    description: "Series de datos públicos de la Reserva Federal (FRED)."
+    scopes: [read_only]
+  search:
+    description: "Búsqueda general (uso futuro, no asignado a ningún agente activo hoy)."
+    scopes: [read_only]
+  email:
+    description: "Envío de correo. Reservado: ningún agente lo tiene permitido hoy."
+    scopes: [write]
+  calendar:
+    description: "Gestión de calendario. Reservado: ningún agente lo tiene permitido hoy."
+    scopes: [write]

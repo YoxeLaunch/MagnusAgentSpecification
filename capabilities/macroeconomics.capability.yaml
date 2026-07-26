@@ -1,0 +1,12 @@
+id: macroeconomics
+name: "Macroeconomics"
+parent: finance
+description: >
+  Política monetaria, inflación, ciclos económicos, bancos centrales,
+  crecimiento del PIB, tipos de interés, política fiscal.
+routing_examples:
+  - "perspectiva de inflación para el próximo año"
+  - "qué va a hacer la Fed con los tipos de interés"
+  - "cómo afecta la política monetaria a mi economía"
+  - "análisis del ciclo económico actual"
+embedding_seed: auto

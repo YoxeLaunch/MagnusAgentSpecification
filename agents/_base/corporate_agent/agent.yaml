@@ -1,0 +1,22 @@
+# Base MAS — CorporateAgent. NUNCA se carga como agente (agents/_base/* está
+# excluido del descubrimiento de AgentRegistry). Solo aporta valores por
+# defecto que el resto de la jerarquía hereda vía `extends`.
+#
+# Regla de fusión (docs/04-MAGNUS-V2-ARQUITECTURA.md §6): tools.deny es
+# UNIÓN a lo largo de toda la cadena y nunca se resta en un hijo — por eso
+# aquí solo van denegaciones verdaderamente universales (ningún agente de
+# Magnus envía correos ni gestiona calendario todavía). Denegaciones más
+# específicas de una rama (p. ej. terminal para Economist) viven en esa rama,
+# no aquí, para no bloquear a otras ramas que sí las necesitan (TechnicalAdvisor).
+tools:
+  deny: [email, calendar]
+
+permissions:
+  policy_ref: analyst_base
+
+evaluation:
+  rigor: 7
+  require_citations: true
+
+constitution:
+  inherits: [magnus_constitution, evidence_policy, citation_policy]

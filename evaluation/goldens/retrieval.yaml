@@ -1,0 +1,119 @@
+# Set de evaluación de RECUPERACIÓN (paso 4.5 del ROADMAP).
+#
+# Cada caso es: una consulta como la escribiría el usuario → las notas de la
+# LLM-Wiki real que DEBERÍAN aparecer entre los k primeros resultados. Se mide
+# recall@k, no la calidad de la respuesta generada: aquí solo se evalúa si el
+# retriever encuentra la evidencia correcta.
+#
+# Reglas para añadir casos:
+#   - `esperado` son rutas relativas a LLM-Wiki/wiki/, sin el namespace.
+#     Basta con que la ruta sea un sufijo/subcadena de la fuente recuperada.
+#   - Redacta la consulta con las palabras que usarías tú, no con las del
+#     título de la nota. Un golden que repite el título literal no mide nada:
+#     cualquier retriever léxico lo acierta.
+#   - Si un caso falla a propósito (evidencia que la wiki no tiene), márcalo
+#     con `debe_fallar: true` en vez de borrarlo.
+
+casos:
+  # -- 01-Economia-y-Finanzas -------------------------------------------------
+  - consulta: "cómo va la economía dominicana y qué pasa con los precios"
+    namespaces: ["01-Economia-y-Finanzas"]
+    esperado:
+      - "Economía Dominicana 2025-2026.md"
+
+  - consulta: "para qué sirve subir las tasas de interés"
+    namespaces: ["01-Economia-y-Finanzas"]
+    esperado:
+      - "Dinero, Bancos y Crédito.md"
+
+  - consulta: "qué pasó con el petróleo y el estrecho de Ormuz"
+    namespaces: ["01-Economia-y-Finanzas"]
+    esperado:
+      - "Ormuz"
+
+  - consulta: "por qué unos países son mucho más ricos que otros"
+    namespaces: ["01-Economia-y-Finanzas"]
+    esperado:
+      - "Desigualdad Económica.md"
+
+  - consulta: "en qué se va el dinero del Estado y el problema de la corrupción"
+    namespaces: ["01-Economia-y-Finanzas"]
+    esperado:
+      - "Corrupción y Gasto"
+
+  # -- 02-Salud-Corporal ------------------------------------------------------
+  - consulta: "soy delgado y me cuesta ganar músculo"
+    namespaces: ["02-Salud-Corporal"]
+    esperado:
+      - "Hipertrofia"
+
+  - consulta: "por qué me siento mal cuando duermo poco"
+    namespaces: ["02-Salud-Corporal"]
+    esperado:
+      - "Sueño"
+
+  # -- 03-Salud-Mental-y-Desarrollo-Personal ----------------------------------
+  - consulta: "cómo dejar de preocuparme por lo que no puedo controlar"
+    namespaces: ["03-Salud-Mental-y-Desarrollo-Personal"]
+    esperado:
+      - "Estoicismo y Dicotomia de Control.md"
+
+  - consulta: "encontrarle sentido al sufrimiento"
+    namespaces: ["03-Salud-Mental-y-Desarrollo-Personal"]
+    esperado:
+      - "Frankl"
+      - "Logoterapia"
+
+  - consulta: "técnicas con respaldo clínico para manejar la ansiedad"
+    namespaces: ["03-Salud-Mental-y-Desarrollo-Personal"]
+    esperado:
+      - "Evidencia Clínica para Regulación Emocional"
+
+  # -- 06-Tecnologia-e-IA -----------------------------------------------------
+  - consulta: "cómo hago que un modelo responda usando mis propios documentos"
+    namespaces: ["06-Tecnologia-e-IA"]
+    esperado:
+      - "Retrieval-Augmented Generation"
+
+  - consulta: "entrenar un modelo grande sin tanta GPU"
+    namespaces: ["06-Tecnologia-e-IA"]
+    esperado:
+      - "LoRA"
+
+  - consulta: "cómo se mide si un modelo de lenguaje es bueno"
+    namespaces: ["06-Tecnologia-e-IA"]
+    esperado:
+      - "Evaluación de LLMs"
+
+  - consulta: "predecir series de tiempo"
+    namespaces: ["06-Tecnologia-e-IA"]
+    esperado:
+      - "Forecasting"
+
+  # -- 05-Proyectos-y-Planes --------------------------------------------------
+  - consulta: "mantenimiento del carro"
+    namespaces: ["05-Proyectos-y-Planes"]
+    esperado:
+      - "Corolla"
+
+  - consulta: "en qué se me está yendo la plata cada mes"
+    namespaces: ["05-Proyectos-y-Planes"]
+    esperado:
+      - "Analisis de Gastos Personales"
+
+  - consulta: "cómo mejorar mi forma de relacionarme y liderar"
+    namespaces: ["05-Proyectos-y-Planes"]
+    esperado:
+      - "Habilidades Sociales y Liderazgo"
+
+  # -- 07-Legal-y-Normativa-RD ------------------------------------------------
+  - consulta: "qué impuestos me tocan y cómo funciona la DGII"
+    namespaces: ["07-Legal-y-Normativa-RD"]
+    esperado:
+      - "Tributario"
+      - "DGII"
+
+  - consulta: "multas de tránsito y licencia de conducir"
+    namespaces: ["07-Legal-y-Normativa-RD"]
+    esperado:
+      - "63-17"

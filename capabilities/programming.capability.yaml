@@ -1,0 +1,10 @@
+id: programming
+name: "Programming"
+parent: null
+description: >
+  Desarrollo de software, arquitectura de código, buenas prácticas.
+routing_examples:
+  - "cómo estructuro este código"
+  - "ayuda con un bug en mi programa"
+  - "buenas prácticas de programación"
+embedding_seed: auto

@@ -1,0 +1,51 @@
+mas_version: "1.0"
+id: nuevo_agente
+name: "Nombre del Agente"
+role: "Rol dentro de Magnus Dynamic Group"
+version: "0.1.0"
+status: draft                 # draft | active | deprecated | invalid
+
+routing:
+  capabilities: []            # [{ id: <capability_id>, strength: primary|secondary }]
+                               # cada id debe existir en capabilities/*.capability.yaml
+  priority: 5
+
+knowledge:
+  sources: []                 # namespaces de la wiki que consulta por defecto
+  retrieval: { top_k: 8, reranker: true, min_score: 0.35 }
+
+model:
+  profile: reasoning_std      # se resuelve en configs/models.yaml
+  fallback_profile: routing_fast
+
+tools:
+  allow: [llm_wiki]
+  deny:  [terminal, email, calendar]
+  # mcp_servers: [{ id: llm_wiki, scope: read_only }]   # opcional (Fase 4),
+  # cada id debe existir en tools/mcp_catalog.yaml y el scope entre los soportados
+
+permissions:
+  policy_ref: analyst_base    # debe existir en configs/permissions.yaml
+
+memory:
+  short_term: true
+  episodic: true
+  semantic_write: proposal_only
+
+evaluation:
+  rubric_ref: evidence_strict   # el criterio real vive en evaluation.md de este agente
+  rigor: 8
+  require_citations: true
+
+constitution:
+  inherits: [magnus_constitution, evidence_policy, citation_policy]
+
+# Crear un agente nuevo:
+#   cp -r agents/_template agents/mi_agente
+#   editar agent.yaml + los 12 .md (obligatorios para status: active,
+#   ver docs/04-MAGNUS-V2-ARQUITECTURA.md §4), luego:
+#   magnus agent validate mi_agente   (cuando exista el SDK, Fase 5)
+#
+# Si necesitas una capacidad que no existe todavía en capabilities/*.yaml,
+# créala primero (ver capabilities/brand_strategy.capability.yaml como
+# ejemplo de capacidad catalogada sin agente asignado).

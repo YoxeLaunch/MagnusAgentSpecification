@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magnus"
+version = "0.2.0"
+description = "Magnus — runtime multiagente sobre una base de conocimiento personal (LLM-Wiki)"
+readme = "README.md"
+# El código usa `from __future__ import annotations` y sintaxis `X | None`
+# únicamente en anotaciones, más `match`/dataclasses estándar: 3.10 es el
+# mínimo real. El README decía 3.12+ sin que nada lo exigiera.
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+# Adaptadores de proveedor remoto: opcionales a propósito. Un checkout limpio
+# debe poder instalarse y testearse sin credenciales ni SDKs de nube.
+anthropic = ["anthropic>=0.40"]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+magnus = "sdk.cli:main"
+magnus-mcp = "mcp_server.magnus_mcp:main"
+magnus-mcp-http = "mcp_server.magnus_http:main"
+
+[tool.setuptools]
+packages = [
+    "evaluation",
+    "kernel",
+    "kernel.rag",
+    "orchestration",
+    "orchestration.capability",
+    "orchestration.evaluation",
+    "orchestration.memory",
+    "orchestration.registry",
+    "providers",
+    "mcp_server",
+    "sdk",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# Las pruebas nunca deben salir a la red ni pedir credenciales; los tests que
+# necesiten un proveedor real deben marcarse y quedan desactivados por defecto.
+markers = [
+    "network: requiere red o credenciales (desactivado en la suite por defecto)",
+]

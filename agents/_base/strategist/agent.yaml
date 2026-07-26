@@ -1,0 +1,8 @@
+extends: knowledge_worker
+
+tools:
+  allow: [kiwix, llm_wiki, python]
+  deny:  [terminal, browser]
+
+permissions:
+  policy_ref: strategist_readonly

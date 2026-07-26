@@ -1,0 +1,8 @@
+extends: knowledge_worker
+
+tools:
+  allow: [kiwix, llm_wiki, python, terminal, browser]
+  deny:  []
+
+permissions:
+  policy_ref: technical_advisor_readonly

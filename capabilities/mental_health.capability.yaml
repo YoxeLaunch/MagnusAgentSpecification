@@ -1,0 +1,13 @@
+id: mental_health
+name: "Mental Health"
+parent: null
+related: [career_transition]
+description: >
+  Estrés, ansiedad, burnout, bienestar emocional, gestión de emociones.
+  No sustituye atención psicológica o psiquiátrica profesional.
+routing_examples:
+  - "estoy muy estresado con el trabajo"
+  - "cómo manejo la ansiedad"
+  - "siento burnout"
+  - "necesito ayuda con mis emociones"
+embedding_seed: auto

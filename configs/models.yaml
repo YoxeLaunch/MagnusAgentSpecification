@@ -1,0 +1,45 @@
+# Perfiles de modelo → proveedor concreto.
+# Los agentes MAS declaran `model.profile`; NUNCA un modelo hardcodeado.
+# Cambiar de proveedor = editar este archivo, sin tocar ningún agente.
+#
+# ADAPTADORES IMPLEMENTADOS HOY: `anthropic` y `ollama`. Un perfil que resuelva
+# a cualquier otro proveedor falla con `ProviderUnavailable` — un error
+# normalizado y explícito, no un KeyError — y cae al siguiente endpoint del
+# plan de fallback si lo hay (ver la política en providers/registry.py).
+#
+# Los fallbacks a openai/mistral/openrouter que declaraba este archivo se
+# retiraron: prometían una red de seguridad inexistente. Vuelven cuando exista
+# el adaptador correspondiente (paso 6 del ROADMAP).
+
+profiles:
+  reasoning_high:
+    primary:  { provider: anthropic, model: "claude-opus-4-8", thinking: adaptive, effort: high }
+    fallback: { provider: anthropic, model: "claude-sonnet-5" }
+
+  reasoning_std:
+    primary:  { provider: anthropic, model: "claude-sonnet-5" }
+    fallback: { provider: ollama,    model: "qwen2.5:14b" }
+
+  routing_fast:
+    primary:  { provider: anthropic, model: "claude-haiku-4-5" }
+    fallback: { provider: ollama,    model: "llama3.1:8b" }
+
+  local_private:
+    primary:  { provider: ollama,    model: "qwen2.5:14b" }
+
+providers:
+  anthropic:  { api_key_env: ANTHROPIC_API_KEY }   # adaptador: providers/anthropic_provider.py
+  ollama:     { base_url: "http://localhost:11434" }  # adaptador: providers/ollama_provider.py
+
+  # Declarados para documentar la intención, SIN adaptador todavía. Ningún
+  # perfil de arriba los referencia a propósito.
+  openai:     { api_key_env: OPENAI_API_KEY,     adapter: pendiente }
+  google:     { api_key_env: GOOGLE_API_KEY,     adapter: pendiente }
+  mistral:    { api_key_env: MISTRAL_API_KEY,    adapter: pendiente }
+  openrouter: { api_key_env: OPENROUTER_API_KEY, adapter: pendiente }
+
+embeddings:
+  default:
+    provider: local
+    model: "bge-m3"
+    dim: 1024

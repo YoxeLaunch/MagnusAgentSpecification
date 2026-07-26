@@ -1,0 +1,10 @@
+id: personal_development
+name: "Personal Development"
+parent: mental_health
+description: >
+  Hábitos, autoconocimiento, desarrollo personal, cambio de comportamiento.
+routing_examples:
+  - "cómo construyo mejores hábitos"
+  - "quiero desarrollarme personalmente"
+  - "cómo mejoro mi disciplina"
+embedding_seed: auto

@@ -1,0 +1,11 @@
+extends: knowledge_worker
+
+tools:
+  allow: [kiwix, llm_wiki, magnus_capital, python, imf_api, world_bank_api, fred]
+  deny:  [terminal, browser]
+
+permissions:
+  policy_ref: economist_readonly
+
+evaluation:
+  rigor: 9

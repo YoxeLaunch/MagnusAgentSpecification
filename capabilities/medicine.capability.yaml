@@ -1,0 +1,21 @@
+id: medicine
+name: "Medicine"
+parent: null
+related: [nutrition, fitness]
+synonyms:
+  - dolor
+  - duele
+  - sintoma
+  - sintomas
+  - malestar
+  - molestia
+  - enfermo
+  - enfermedad
+description: >
+  Salud corporal y bienestar físico general. Alcance limitado a educación y
+  estilo de vida — NUNCA diagnóstico clínico ni sustituye a un médico.
+routing_examples:
+  - "cómo mejoro mi salud en general"
+  - "qué hábitos de salud debería tener"
+  - "me duele algo, qué puede ser" # el agente debe derivar a un profesional, no diagnosticar
+embedding_seed: auto

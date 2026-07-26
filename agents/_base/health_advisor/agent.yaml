@@ -1,0 +1,8 @@
+extends: knowledge_worker
+
+tools:
+  allow: [kiwix, llm_wiki]
+  deny:  [terminal, browser, python]
+
+evaluation:
+  rigor: 8

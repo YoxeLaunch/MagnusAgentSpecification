@@ -1,0 +1,19 @@
+id: finance
+name: "Finance"
+parent: null
+synonyms:
+  # Añadido en el paso 6 (routing semántico): "quiero ahorrar mas plata cada
+  # mes" no matcheaba NINGUNA capacidad sin este sinónimo — "plata" es
+  # coloquial muy común para dinero y ninguna otra palabra de la consulta
+  # da señal. Verificado con HybridCapabilityMatcher antes de añadirlo (ver
+  # evaluation/goldens/routing.yaml).
+  - plata
+description: >
+  Análisis financiero, presupuesto, inversión, ahorro, deuda, planificación
+  financiera personal o corporativa.
+routing_examples:
+  - "debería invertir en bonos o acciones"
+  - "cómo organizo mi presupuesto"
+  - "análisis de riesgo de mi portafolio"
+  - "quiero invertir mi dinero"
+embedding_seed: auto

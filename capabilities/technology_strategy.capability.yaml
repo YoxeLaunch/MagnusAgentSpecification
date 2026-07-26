@@ -1,0 +1,10 @@
+id: technology_strategy
+name: "Technology Strategy"
+parent: programming
+description: >
+  Decisiones tecnológicas de alto nivel: qué herramienta adoptar, cómo
+  digitalizar un proceso, evaluación de riesgo tecnológico.
+routing_examples:
+  - "qué tecnología debería adoptar"
+  - "cómo digitalizo este proceso"
+embedding_seed: auto

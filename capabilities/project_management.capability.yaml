@@ -1,0 +1,12 @@
+id: project_management
+name: "Project Management"
+parent: null
+description: >
+  Planificación de proyectos, definición de objetivos, seguimiento de metas,
+  gestión de transiciones (p. ej. cambio de trabajo).
+routing_examples:
+  - "cómo planifico este proyecto"
+  - "quiero cambiar de trabajo"
+  - "necesito definir objetivos claros"
+  - "plan de transición profesional"
+embedding_seed: auto

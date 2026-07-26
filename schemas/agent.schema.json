@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://magnus.dev/schemas/agent.schema.json",
+  "title": "Magnus Agent Specification (MAS) v1",
+  "description": "Contrato estructural de agent.yaml. Ver docs/01-MAS-especificacion.md y docs/04-MAGNUS-V2-ARQUITECTURA.md §5. Validación en dos niveles: este schema cubre SOLO lo estructural (sin I/O); las reglas referenciales (routing.capabilities[].id existe en capabilities/, model.profile existe en models.yaml, tools.allow registrado, permissions.policy_ref existe, sin ciclos de extends) las aplica AgentRegistry en load_all()/activate(), no este schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mas_version", "id", "name", "role", "version", "status", "routing", "knowledge", "model", "tools", "permissions", "evaluation", "constitution"],
+  "properties": {
+    "mas_version": { "type": "string", "const": "1.0" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "name": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "minLength": 1 },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer. Debe incrementarse en cada cambio de agent.yaml."
+    },
+    "status": { "type": "string", "enum": ["draft", "active", "deprecated", "invalid"] },
+    "extends": {
+      "type": "string",
+      "description": "id de un agente/plantilla base en agents/_base/. Ver §6 (herencia)."
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities", "priority"],
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "strength"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "strength": { "type": "string", "enum": ["primary", "secondary"] }
+            }
+          },
+          "description": "Reemplaza a domains/intents (v0). Cada id debe existir en capabilities/*.capability.yaml (validación referencial)."
+        },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 10 }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "retrieval"],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 0
+        },
+        "retrieval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["top_k", "min_score"],
+          "properties": {
+            "top_k": { "type": "integer", "minimum": 1, "maximum": 50 },
+            "reranker": { "type": "boolean" },
+            "min_score": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile"],
+      "properties": {
+        "profile": { "type": "string", "minLength": 1 },
+        "fallback_profile": { "type": "string" },
+        "effort": { "type": "string", "enum": ["low", "medium", "high", "xhigh", "max"] }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow", "deny"],
+      "properties": {
+        "mcp_servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "scope"],
+            "properties": {
+              "id": { "type": "string" },
+              "scope": { "type": "string", "enum": ["read_only", "execute", "write"] }
+            }
+          },
+          "description": "Declaración enriquecida (Fase 4). Opcional mientras el catálogo central de servidores MCP no exista."
+        },
+        "allow": { "type": "array", "items": { "type": "string" } },
+        "deny": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_ref"],
+      "properties": {
+        "policy_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "short_term": { "type": "boolean" },
+        "long_term": { "type": "boolean" },
+        "episodic": { "type": "boolean" },
+        "project_memory": { "type": "boolean" },
+        "semantic_write": { "type": "string", "enum": ["proposal_only", "none"] }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rubric_ref", "rigor", "require_citations"],
+      "properties": {
+        "rubric_ref": { "type": "string", "minLength": 1 },
+        "rigor": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "require_citations": { "type": "boolean" }
+      }
+    },
+    "constitution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inherits"],
+      "properties": {
+        "inherits": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "contains": { "const": "magnus_constitution" }
+        }
+      }
+    }
+  },
+  "$comment": "Regla adicional aplicada por AgentRegistry (no expresable en JSON Schema puro): si status == 'active', deben existir con contenido no vacío los 12 archivos Markdown listados en docs/04-MAGNUS-V2-ARQUITECTURA.md §4 (identity, mission, personality, principles, skills, knowledge, tools, permissions, memory, examples, evaluation, workflows)."
+}

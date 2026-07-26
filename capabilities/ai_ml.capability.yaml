@@ -1,0 +1,10 @@
+id: ai_ml
+name: "AI & Machine Learning"
+parent: programming
+description: >
+  Modelos de lenguaje, inteligencia artificial, machine learning, LLMs.
+routing_examples:
+  - "cómo funciona un modelo de lenguaje"
+  - "qué es Claude o un LLM"
+  - "cómo entreno un modelo de machine learning"
+embedding_seed: auto

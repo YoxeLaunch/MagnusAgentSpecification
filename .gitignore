@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tests / herramientas
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Estado local del runtime (no es código ni conocimiento)
+*.sqlite
+*.sqlite3
+traces/
+.env
+.mcp.json
+LLM-Wiki/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

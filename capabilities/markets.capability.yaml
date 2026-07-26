@@ -1,0 +1,11 @@
+id: markets
+name: "Markets"
+parent: finance
+description: >
+  Mercados financieros: acciones, bonos, divisas, materias primas,
+  comportamiento de precios y volatilidad.
+routing_examples:
+  - "análisis de mercado de acciones"
+  - "cómo está el mercado de divisas"
+  - "volatilidad reciente en bolsa"
+embedding_seed: auto

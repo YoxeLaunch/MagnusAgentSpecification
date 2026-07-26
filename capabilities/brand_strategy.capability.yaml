@@ -1,0 +1,12 @@
+id: brand_strategy
+name: "Brand Strategy"
+parent: null
+description: >
+  Estrategia de marca, posicionamiento, identidad de marca. Capacidad
+  catalogada sin agente asignado todavía (huérfana intencional — ver
+  docs/04-MAGNUS-V2-ARQUITECTURA.md §4). El Capability Engine debe degradar
+  con gracia cuando no hay agente disponible para esta capacidad.
+routing_examples:
+  - "cómo posiciono mi marca"
+  - "estrategia de identidad de marca"
+embedding_seed: auto

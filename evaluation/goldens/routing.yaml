@@ -1,0 +1,130 @@
+# Set de evaluación de ENRUTADO (paso 6 del ROADMAP, primer bloque).
+#
+# A diferencia de retrieval.yaml (¿el retriever encuentra la nota correcta?),
+# aquí se mide ¿el Capability Engine + Agent Selection Engine enrutan la
+# consulta al AGENTE correcto? Cada caso se probó contra el motor real
+# (agents/*, capabilities/*.yaml reales) antes de escribirlo aquí — ver
+# `evaluation/bench_routing.py` para reproducir los números exactos.
+#
+# Campos de cada caso:
+#   consulta:   texto tal como lo escribiría el usuario.
+#   categoria:  finanzas | salud_sueno | productividad_carrera | tecnologia |
+#               ambigua | sin_dominio — para el desglose del reporte.
+#   esperado:   lista de agent_id aceptables. Para "ambigua" puede haber más
+#               de uno (varios dominios aplican de verdad). Para
+#               "sin_dominio", lista vacía: NINGÚN agente debe seleccionarse.
+#
+# Regla para añadir casos: verificar contra el motor real antes de escribir
+# el `esperado` — no se inventa la expectativa, se mide (misma disciplina que
+# retrieval.yaml).
+
+casos:
+  # -- finanzas e inversión ----------------------------------------------------
+  - consulta: "cuál es la inflación en República Dominicana"
+    categoria: finanzas
+    esperado: [ernesto_libras]
+
+  - consulta: "debería invertir en bonos o acciones"
+    categoria: finanzas
+    esperado: [ernesto_libras]
+
+  - consulta: "quiero ahorrar más plata cada mes"
+    categoria: finanzas
+    esperado: [ernesto_libras]
+
+  - consulta: "qué va a hacer la Fed con las tasas de interés"
+    categoria: finanzas
+    esperado: [ernesto_libras]
+
+  - consulta: "análisis de riesgo de mi portafolio"
+    categoria: finanzas
+    esperado: [ernesto_libras]
+
+  # -- sueño / salud ------------------------------------------------------------
+  - consulta: "cómo mejoro mi sueño"
+    categoria: salud_sueno
+    esperado: [dr_soma]
+
+  - consulta: "no puedo pegar el ojo en toda la noche"
+    categoria: salud_sueno
+    esperado: [dr_soma]
+
+  - consulta: "qué debería comer para tener más energía"
+    categoria: salud_sueno
+    esperado: [dr_soma]
+
+  - consulta: "cómo empiezo a hacer ejercicio"
+    categoria: salud_sueno
+    esperado: [dr_soma]
+
+  - consulta: "me duele algo, qué puede ser"
+    categoria: salud_sueno
+    esperado: [dr_soma]
+
+  # -- productividad / carrera ---------------------------------------------------
+  - consulta: "quiero cambiar de trabajo"
+    categoria: productividad_carrera
+    esperado: [amanda]
+
+  - consulta: "me quiero ir de mi chamba, ya no aguanto"
+    categoria: productividad_carrera
+    esperado: [amanda]
+
+  - consulta: "cómo priorizo mis tareas"
+    categoria: productividad_carrera
+    esperado: [amanda]
+
+  - consulta: "necesito definir objetivos claros"
+    categoria: productividad_carrera
+    esperado: [amanda]
+
+  - consulta: "pierdo mucho tiempo en el día"
+    categoria: productividad_carrera
+    esperado: [amanda]
+
+  # -- tecnología -----------------------------------------------------------------
+  - consulta: "cómo estructuro este código"
+    categoria: tecnologia
+    esperado: [lexi]
+
+  - consulta: "qué es un LLM o Claude"
+    categoria: tecnologia
+    esperado: [lexi]
+
+  - consulta: "ayuda con un bug en mi programa"
+    categoria: tecnologia
+    esperado: [lexi]
+
+  - consulta: "qué tecnología debería adoptar"
+    categoria: tecnologia
+    esperado: [lexi]
+
+  # -- ambiguas (más de un dominio aplica de verdad) ------------------------------
+  - consulta: "quiero cambiar de trabajo porque estoy muy estresado"
+    categoria: ambigua
+    esperado: [amanda, serena]
+
+  - consulta: "cómo planifico mis finanzas para cambiar de carrera"
+    categoria: ambigua
+    esperado: [amanda, ernesto_libras]
+
+  - consulta: "cómo priorizo mis tareas cuando también quiero hacer ejercicio"
+    categoria: ambigua
+    esperado: [amanda, dr_soma]
+
+  # -- sin dominio (ningún agente debe seleccionarse) -----------------------------
+  - consulta: "cuál es la capital de Francia"
+    categoria: sin_dominio
+    esperado: []
+
+  - consulta: "qué es un smartphone plegable"
+    categoria: sin_dominio
+    esperado: []
+
+  - consulta: "receta de tres leches"
+    categoria: sin_dominio
+    esperado: []
+
+  - consulta: "cuánto cuesta un boleto de avión a Madrid"
+    categoria: sin_dominio
+    esperado: []

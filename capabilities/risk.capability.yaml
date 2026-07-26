@@ -1,0 +1,12 @@
+id: risk
+name: "Risk"
+parent: finance
+related: [markets, macroeconomics]
+description: >
+  Identificación y estimación de riesgo financiero: probabilidad, impacto,
+  escenarios adverso/base/favorable.
+routing_examples:
+  - "riesgo financiero de esta decisión"
+  - "qué puede salir mal con esta inversión"
+  - "análisis de escenarios de riesgo"
+embedding_seed: auto

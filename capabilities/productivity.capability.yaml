@@ -1,0 +1,10 @@
+id: productivity
+name: "Productivity"
+parent: project_management
+description: >
+  Gestión del tiempo, prioridades, hábitos de trabajo, eliminación de fricción.
+routing_examples:
+  - "cómo soy más productivo"
+  - "cómo priorizo mis tareas"
+  - "pierdo mucho tiempo en el día"
+embedding_seed: auto

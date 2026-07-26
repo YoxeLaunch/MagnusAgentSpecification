@@ -1,0 +1,16 @@
+id: fitness
+name: "Fitness"
+parent: medicine
+synonyms:
+  # Añadido en el paso 6 (routing semántico): "no puedo pegar el ojo en toda
+  # la noche" no matcheaba nada sin esto — modismo muy común para insomnio
+  # que no comparte ni una palabra con "sueño"/"dormir". Verificado antes de
+  # añadirlo (ver evaluation/goldens/routing.yaml).
+  - pegar el ojo
+description: >
+  Ejercicio, entrenamiento, sueño, recuperación física.
+routing_examples:
+  - "cómo empiezo a hacer ejercicio"
+  - "cómo mejoro mi sueño"
+  - "rutina de entrenamiento para principiantes"
+embedding_seed: auto

@@ -1,0 +1,17 @@
+id: career_transition
+name: "Career Transition"
+parent: project_management
+related: [mental_health, finance]
+synonyms:
+  # Añadido en el paso 6 (routing semántico): "me quiero ir de mi chamba, ya
+  # no aguanto" no matcheaba nada sin esto — "chamba" es coloquial muy común
+  # para trabajo/empleo. Verificado antes de añadirlo (ver
+  # evaluation/goldens/routing.yaml).
+  - chamba
+description: >
+  Cambio de carrera o de trabajo: decisión, plan de salida, riesgos, tiempos.
+routing_examples:
+  - "quiero renunciar a mi trabajo"
+  - "cómo planifico un cambio de carrera"
+  - "cuándo es buen momento para cambiar de trabajo"
+embedding_seed: auto

@@ -1,0 +1,44 @@
+mas_version: "1.0"
+id: ernesto_libras
+name: "Ernesto Libras"
+role: "Economista Senior de Magnus Dynamic Group"
+version: "2.1.0"
+status: active
+extends: economist   # → knowledge_worker → corporate_agent
+                     # hereda tools.allow/deny, permissions.policy_ref,
+                     # memory y constitution — ver docs/04-MAGNUS-V2-ARQUITECTURA.md §6
+
+routing:
+  capabilities:
+    - { id: macroeconomics, strength: primary }
+    - { id: finance,        strength: primary }
+    - { id: markets,        strength: secondary }
+    - { id: risk,           strength: secondary }
+  priority: 8
+
+knowledge:
+  sources:
+    - 01-Economia-y-Finanzas
+  retrieval:
+    top_k: 8
+    reranker: true
+    min_score: 0.35
+
+model:
+  profile: reasoning_high
+  fallback_profile: reasoning_std
+  effort: high
+
+tools:
+  mcp_servers:
+    - { id: llm_wiki,        scope: read_only }
+    - { id: kiwix,           scope: read_only }
+    - { id: magnus_capital,  scope: read_only }
+    - { id: python,          scope: execute }
+    - { id: imf_api,         scope: read_only }
+    - { id: world_bank_api,  scope: read_only }
+    - { id: fred,            scope: read_only }
+
+evaluation:
+  rubric_ref: evidence_strict
+  rigor: 10               # sube el rigor base de Economist (9) — dominio financiero exige más

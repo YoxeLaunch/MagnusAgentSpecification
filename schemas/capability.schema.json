@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://magnus.dev/schemas/capability.schema.json",
+  "title": "Magnus Capability",
+  "description": "Contrato estructural de capabilities/*.capability.yaml. Ver docs/04-MAGNUS-V2-ARQUITECTURA.md §3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Identificador único, snake_case. Es la clave de referencia desde agent.yaml → routing.capabilities[].id."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "parent": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "id de otra Capability, o null si es raíz. Jerarquía de profundidad arbitraria (p. ej. medicine → gastroenterology → digestive_diseases). No debe formar ciclos."
+    },
+    "related": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+      "default": [],
+      "description": "ids de otras Capability con las que hay afinidad conceptual SIN relación jerárquica (p. ej. 'risk' related a 'markets'). Direccional tal como se declara; para una asociación simétrica, declararla en ambos archivos. El CapabilityMatcher propaga una fracción del score entre relacionados (ver orchestration/capability/matcher.py)."
+    },
+    "synonyms": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "default": [],
+      "description": "Vocabulario de dominio: sinónimos, jerga o variantes léxicas que el usuario podría usar y que no aparecen literalmente en description/routing_examples (p. ej. 'dolor', 'duele' para 'medicine'). Alimenta el índice de matching igual que description/routing_examples."
+    },
+    "description": { "type": "string", "minLength": 10 },
+    "routing_examples": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 3 },
+      "minItems": 1,
+      "description": "Frases de ejemplo que alimentan el índice de matching (léxico hoy; el mismo campo alimentará el índice de embeddings cuando se adopte, sin cambiar el archivo)."
+    },
+    "embedding_seed": {
+      "type": "string",
+      "enum": ["auto"],
+      "default": "auto",
+      "description": "Reservado para cuando el índice pase a embeddings reales. 'auto' = derivar de description + routing_examples + synonyms."
+    }
+  }
+}

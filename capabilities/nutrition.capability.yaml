@@ -1,0 +1,9 @@
+id: nutrition
+name: "Nutrition"
+parent: medicine
+description: >
+  Alimentación, dieta, hábitos nutricionales generales.
+routing_examples:
+  - "cómo mejoro mi dieta"
+  - "qué debería comer para tener más energía"
+embedding_seed: auto

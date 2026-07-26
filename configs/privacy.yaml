@@ -1,0 +1,42 @@
+# Política de EGRESO de datos (paso 5.4 del ROADMAP).
+#
+# La LLM-Wiki contiene información personal, financiera, legal y de salud. Al
+# responder con un LLM, los pasajes recuperados viajan dentro del prompt. Este
+# archivo decide qué namespaces pueden salir del dispositivo y cuáles no.
+#
+# Editar este archivo ES el acto de consentimiento: no hay ningún camino por el
+# que un namespace marcado `local_only` acabe en un proveedor remoto por una
+# configuración implícita o por un fallback automático. Si no hay proveedor
+# local disponible, el motor degrada a respuesta extractiva y lo declara —
+# nunca "se arregla" mandando los datos fuera.
+#
+# Valores de `politica`:
+#   local_only     — solo proveedores locales (Ollama). Es el DEFECTO.
+#   remote_allowed — puede ir a proveedores remotos (Anthropic, etc.).
+
+egreso:
+  # Denegación por defecto: un namespace nuevo en la wiki NO sale del
+  # dispositivo hasta que alguien lo autorice aquí explícitamente.
+  por_defecto: local_only
+
+  # Proveedores que se consideran locales (no sale nada del dispositivo).
+  proveedores_locales:
+    - ollama
+
+  namespaces:
+    # Material de estudio y referencia técnica: nada personal en sí mismo.
+    06-Tecnologia-e-IA: remote_allowed
+    07-Legal-y-Normativa-RD: remote_allowed
+
+    # Notas personales de economía y planes: contienen cifras propias,
+    # gastos, ingresos y decisiones. Se autorizan porque el análisis
+    # económico es el caso de uso principal, y con conocimiento de causa.
+    01-Economia-y-Finanzas: remote_allowed
+    05-Proyectos-y-Planes: remote_allowed
+
+    # Salud corporal, salud mental y dinámica social: NO salen del
+    # dispositivo. Son las categorías más sensibles de la wiki y las que
+    # menos se ganan por usar un modelo remoto en vez de uno local.
+    02-Salud-Corporal: local_only
+    03-Salud-Mental-y-Desarrollo-Personal: local_only
+    04-Dinamica-Social-y-Atraccion: local_only

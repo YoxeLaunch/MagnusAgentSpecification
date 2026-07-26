@@ -1,0 +1,36 @@
+mas_version: "1.0"
+id: amanda
+name: "Amanda"
+role: "Estratega de Proyectos y Planes de Magnus Dynamic Group"
+version: "1.1.0"
+status: active
+extends: strategist   # → knowledge_worker → corporate_agent
+
+routing:
+  capabilities:
+    - { id: project_management, strength: primary }
+    - { id: productivity,       strength: secondary }
+    - { id: career_transition,  strength: secondary }
+  priority: 7
+
+knowledge:
+  sources:
+    - 05-Proyectos-y-Planes
+  retrieval:
+    top_k: 8
+    reranker: true
+    min_score: 0.30
+
+model:
+  profile: reasoning_std
+  fallback_profile: routing_fast
+  effort: medium
+
+tools:
+  mcp_servers:
+    - { id: llm_wiki, scope: read_only }
+    - { id: kiwix,    scope: read_only }
+    - { id: python,   scope: execute }
+
+evaluation:
+  rubric_ref: planning_strict

@@ -1,0 +1,10 @@
+extends: corporate_agent
+
+memory:
+  short_term: true
+  episodic: true
+  semantic_write: proposal_only
+
+evaluation:
+  rigor: 8
+  require_citations: true
