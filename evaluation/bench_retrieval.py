@@ -63,7 +63,11 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Banco de recuperación de Magnus")
     p.add_argument("--k", type=int, default=8, help="profundidad del recall@k")
     p.add_argument("--goldens", default=str(ROOT / "evaluation" / "goldens" / "retrieval.yaml"))
-    p.add_argument("--wiki", default=str(ROOT / "LLM-Wiki" / "wiki"))
+    default_wiki = ROOT / "LLM-Wiki" / "wiki"
+    if not default_wiki.exists() and (ROOT / "LLM-Wiki.example" / "wiki").exists():
+        default_wiki = ROOT / "LLM-Wiki.example" / "wiki"
+
+    p.add_argument("--wiki", default=str(default_wiki))
     args = p.parse_args(argv)
 
     casos = cargar_casos(Path(args.goldens))

@@ -136,7 +136,11 @@ class MagnusEngine:
 
         self.providers = providers if providers is not None else _envolver(provider, self.root)
 
-        self.store = FileWikiStore(self.root / "LLM-Wiki" / "wiki")
+        wiki_dir = self.root / "LLM-Wiki" / "wiki"
+        if not wiki_dir.exists() and (self.root / "LLM-Wiki.example" / "wiki").exists():
+            wiki_dir = self.root / "LLM-Wiki.example" / "wiki"
+
+        self.store = FileWikiStore(wiki_dir)
         self._ingest_report = self.store.ingest()
 
         # Recuperación híbrida REAL: léxica (`FileWikiStore`) + vectorial local
