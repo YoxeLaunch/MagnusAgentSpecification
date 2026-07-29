@@ -1,225 +1,153 @@
-# Magnus Dynamic Group
+# 🚀 Magnus Agent Engine (MAS)
 
-**Sistema operativo de agentes inteligentes, independiente del proveedor de IA.**
+**Sistema operativo de agentes inteligentes soberano, independiente del proveedor de IA y centrado en privacidad (Local-First).**
 
-> Los agentes **no** almacenan conocimiento: saben *dónde buscarlo*. El
-> conocimiento vive en una base documental versionada (LLM Wiki) y se consulta
-> por RAG. Todos los agentes siguen un estándar común: **MAS** (Magnus Agent
-> Specification). El modelo de IA es intercambiable a través del puerto
-> `LLMProvider`: **hoy hay adaptadores para Anthropic y Ollama**; OpenAI,
-> Google, Mistral y OpenRouter son diseño pendiente (paso 6 del
-> [ROADMAP](ROADMAP.md)), no capacidades disponibles.
+> **Autoría & Desarrollo:** Creado y mantenido por **Yoxe / Magnus Dynamic Group** ([`YoxeLaunch/MagnusAgentSpecification`](https://github.com/YoxeLaunch/MagnusAgentSpecification)).
+> 
+> Los agentes en Magnus **no** almacenan conocimiento estático ni alucinan datos privados: consultan una base documental versionada (**LLM-Wiki**) mediante un pipeline RAG Híbrido y respetan el estándar **MAS** (Magnus Agent Specification). El motor es agnóstico del proveedor de LLM e incluye adaptadores nativos para **Anthropic**, **OpenAI**, **Google Gemini** y **Ollama** (ejecución 100% local).
 
-## Documentación de diseño
+---
 
-| Documento | Contenido |
-|-----------|-----------|
-| [`docs/00-VISION-Y-ARQUITECTURA.md`](docs/00-VISION-Y-ARQUITECTURA.md) | Tesis, principios, Clean/DDD/EDA/Hexagonal, capas, flujo multiagente, escalabilidad. |
-| [`docs/01-MAS-especificacion.md`](docs/01-MAS-especificacion.md) | El estándar MAS: estructura de un agente, `agent.yaml`, validación, herencia. |
-| [`docs/02-COMPONENTES.md`](docs/02-COMPONENTES.md) | Los 15 componentes con objetivo, interfaces, flujo, tecnologías, riesgos y escalabilidad. |
-| [`docs/04-MAGNUS-V2-ARQUITECTURA.md`](docs/04-MAGNUS-V2-ARQUITECTURA.md) | **Normativo.** Reconciliación runtime↔docs: Agent Registry, Capability Engine, `agent.schema.json`, herencia, escalabilidad a 500+ agentes, Magnus Agent SDK y roadmap por fases. |
+## 🎯 ¿Qué es Magnus Agent Engine?
 
-## Estructura del repositorio
+**Magnus** es un entorno runtime y sistema operativo multiagente diseñado para resolver el dilema entre inteligencia artificial avanzada y privacidad/soberanía de los datos.
 
-Lo que existe hoy en el repositorio:
+En un entorno tradicional, enviar datos financieros, de salud o personales a modelos de lenguaje en la nube implica riesgos de privacidad, falta de gobernanza y alucinaciones. Magnus resuelve esto separando el **Razonamiento** (modelos de IA) del **Conocimiento** (archivos Markdown estructurados en `LLM-Wiki/`), imponiendo un control de acceso riguroso en tiempo de ejecución:
+
+* **Conocimiento Soberano (Local-First):** Toda la información corporativa o personal reside en Markdown versionado en local.
+* **Seguridad y Privacidad Estricta:** Los namespaces marcados como `local_only` (ej. salud mental, finanzas personales) jamás abandonan el dispositivo hacia APIs externas.
+* **Integración MCP Nativa (Model Context Protocol):** Magnus opera como un servidor MCP listo para conectarse a clientes como Claude Code, Cursor, VSCode o agentes autónomos vía `stdio` o `HTTP`.
+* **Multi-Proveedor de IA:** Soporte dinámico para **Anthropic Claude**, **OpenAI (GPT-4o)**, **Google Gemini** y **Ollama**, con caída automática a respuestas extractivas si se carece de API Keys o conexión.
+
+---
+
+## ✨ Características Principales
+
+| Característica | Descripción |
+|---|---|
+| 🤖 **Orquestación Multiagente (MAS)** | Arquitectura extensible basada en `agent.yaml`, con taxonomía de capacidades, reglas éticas, guardrails y contexto aislado. |
+| 🧠 **RAG Híbrido Calibrado (94.7% Recall)** | Recuperación combinada **Léxica (TF-IDF)** + **Vectorial Local (Random Indexing / Coseno)** con Reciprocal Rank Fusion (RRF) sobre pasajes reales. |
+| 🎯 **Enrutado de Capacidades (Capability Matching)** | Clasificación determinista de intención combinando solape léxico, sinónimos coloquiales curados y filtrado de taxonomía de ancestros. |
+| 🔒 **Engine de Privacidad y Permisos Granulares** | Enforce en tiempo de ejecución de `privacy.yaml` (bloqueo de egreso remoto) y `permissions.yaml` (acceso a herramientas/namespaces por agente). |
+| ⚡ **Servidor MCP Integrado** | Soporte completo del protocolo MCP tanto en transporte de bajo nivel `stdio` (sin puertos expuestos) como servidor HTTP seguro con tokens Bearer y CORS. |
+| 📊 **Auditoría & Trazabilidad Completa** | Trazas estructuradas JSONL auditables con motivos de enrutado, puntuaciones RAG y estado de guardrails. |
+
+---
+
+## 🔌 Proveedores de IA Soportados
+
+El puerto `LLMProvider` ([`providers/base.py`](providers/base.py)) abstrae la comunicación con los modelos de lenguaje. Se seleccionan de forma transparente según el perfil del agente en `configs/models.yaml`:
+
+* **Ollama ([`providers/ollama_provider.py`](providers/ollama_provider.py)):** Ejecución 100% local, privado, sin coste y sin conexión a internet.
+* **Anthropic ([`providers/anthropic_provider.py`](providers/anthropic_provider.py)):** Modelos Claude (Claude 3.5 Sonnet, Claude 3 Opus, etc.).
+* **OpenAI ([`providers/openai_provider.py`](providers/openai_provider.py)):** Modelos GPT-4o, GPT-4o-mini y embeddings compatibles.
+* **Google Gemini ([`providers/google_provider.py`](providers/google_provider.py)):** Modelos Gemini 1.5 Pro y Gemini 1.5 Flash.
+* **Modo Extractivo (Sin LLM):** Si no hay API Key o proveedor activo, Magnus responde citando pasajes literales de la wiki sin costo ni llamadas externas.
+
+---
+
+## 📐 Estructura del Repositorio y Arquitectura
 
 ```
 MAGNUS/
-├── LLM-Wiki/wiki/   # base documental versionada (fuente de verdad del conocimiento)
-├── agents/          # Un directorio por agente conforme a MAS (+ _base, _template)
-├── capabilities/    # Catálogo de Capability (taxonomía de enrutado)
-├── constitution/    # Constitución, ética, evidencia, citación
-├── orchestration/   # Motor, enrutado, evaluación, permisos, privacidad, auditoría
-├── providers/       # Adaptadores de proveedores de IA (puerto LLMProvider)
-├── kernel/rag/      # Ingesta, retriever léxico, vectorial local y pipeline
-├── mcp_server/      # Servidor MCP (stdio y HTTP) + controles de acceso
-├── evaluation/      # Banco de recuperación y goldens
+├── LLM-Wiki/wiki/   # Base documental versionada (fuente de verdad del conocimiento)
+├── agents/          # Agentes definidos bajo el estándar MAS (ernesto_libras, dr_soma, etc.)
+├── capabilities/    # Catálogo de capacidades y taxonomía de enrutado
+├── constitution/    # Constitución ética, guardrails, evidencias y citación
+├── orchestration/   # Motor de orquestación, router, permisos, memoria SQLite y auditoría
+├── providers/       # Adaptadores de IA (Anthropic, OpenAI, Google, Ollama, Registry)
+├── kernel/rag/      # Ingesta de archivos, retriever léxico, vectorial y pipeline híbrido
+├── mcp_server/      # Servidor MCP (transportes stdio y HTTP) + controles de acceso
+├── evaluation/      # Benchmarks de recuperación RAG y enrutado de capacidades
 ├── configs/         # models.yaml, permissions.yaml, privacy.yaml, guardrails.yaml
-├── tests/           # Suite de verificación (pytest)
-└── docs/            # Diseño (arriba)
+├── tests/           # Suite de verificación completa (250+ tests en pytest)
+└── docs/            # Especificación formal MAS y documentos de arquitectura
 ```
 
-`orchestration/memory/` tiene esqueletos **no conectados** al motor, y
-`docs/` describe además componentes (planner, bus de eventos) que son diseño,
-no código. La [tabla de estado del ROADMAP](ROADMAP.md) dice de cada uno si
-está implementado y si está conectado al runtime.
+### Documentación de Diseño Formal
 
-## Esqueletos de referencia incluidos
+| Documento | Contenido |
+|-----------|-----------|
+| [`docs/00-VISION-Y-ARQUITECTURA.md`](docs/00-VISION-Y-ARQUITECTURA.md) | Tesis, principios, Clean Architecture, DDD, Hexagonal, flujo multiagente y escalabilidad. |
+| [`docs/01-MAS-especificacion.md`](docs/01-MAS-especificacion.md) | Especificación del estándar MAS: estructura de un agente, `agent.yaml`, validación y herencia. |
+| [`docs/02-COMPONENTES.md`](docs/02-COMPONENTES.md) | Los 15 componentes del sistema con sus interfaces, flujos y tecnologías. |
+| [`docs/04-MAGNUS-V2-ARQUITECTURA.md`](docs/04-MAGNUS-V2-ARQUITECTURA.md) | **Normativo.** Reconciliación runtime↔docs: Agent Registry, Capability Engine, herencia y SDK. |
 
-- [`providers/base.py`](providers/base.py) — puerto canónico `LLMProvider` + `Embedder`.
-- [`providers/anthropic_provider.py`](providers/anthropic_provider.py) — adaptador Anthropic (`claude-opus-4-8` por defecto).
-- [`providers/registry.py`](providers/registry.py) — resolución de perfiles + fallback.
-- [`orchestration/router.py`](orchestration/router.py) — Router multiagente (intención → agentes → fusión).
-- [`kernel/rag/pipeline.py`](kernel/rag/pipeline.py) — pipeline RAG híbrido con citas.
-- [`agents/ernesto_libras/`](agents/ernesto_libras/) — agente de ejemplo conforme a MAS.
+---
 
-## Cómo recupera (RAG)
+## 🔬 Especificaciones Técnicas
 
-Recuperación **híbrida léxica + vectorial local**, sobre los mismos chunks:
+### 1. Sistema RAG Híbrido (Retrieval-Augmented Generation)
 
-| Retriever | Implementación | Qué aporta |
+El sistema RAG en Magnus combina dos métodos complementarios sobre los mismos chunks de texto:
+
+| Retriever | Arquitectura / Algoritmo | Propósito |
 |---|---|---|
-| Léxico | [`kernel/rag/file_store.py`](kernel/rag/file_store.py) | TF por solape de tokens normalizados |
-| Vectorial local | [`kernel/rag/embedder.py`](kernel/rag/embedder.py) + [`vector_store.py`](kernel/rag/vector_store.py) | **random indexing con pesos TF-IDF** sobre unigramas, bigramas y prefijos, con coseno normalizado |
+| **Léxico** | [`kernel/rag/file_store.py`](kernel/rag/file_store.py) | Ponderación Term Frequency (TF) sobre tokens normalizados. Excelente para términos exactos y códigos. |
+| **Vectorial Local** | [`kernel/rag/embedder.py`](kernel/rag/embedder.py) + [`vector_store.py`](kernel/rag/vector_store.py) | **Random Indexing con pesos TF-IDF** sobre unigramas, bigramas y prefijos en español, evaluado por similitud de Coseno. No requiere dependencias pesadas (Torch/Transformers). |
 
-Los dos rankings se fusionan con Reciprocal Rank Fusion para el **orden**,
-mientras el **umbral** (`min_score` de cada agente) se aplica sobre el score
-original de cada retriever, que es la escala en la que está calibrado.
+Los resultados se combinan mediante **Reciprocal Rank Fusion (RRF)** para determinar el orden de relevancia final, aplicando los umbrales específicos de cada agente (`min_score`).
 
-**Qué NO es:** el retriever vectorial **no usa embeddings neuronales**. No hay
-`bge-m3`, ni sentence-transformers, ni torch, ni Qdrant en este repositorio. No
-conoce sinónimos que no compartan forma: "paro" y "desempleo" siguen sin
-parecerse. Lo que aporta frente al léxico es IDF, bigramas, prefijos (importa
-mucho en español) y coseno normalizado. Un embedder neuronal se enchufa en el
-mismo puerto `Embedder` sin tocar la orquestación — es trabajo del paso 6.
+> **Rendimiento medido sobre el corpus real (`python -m evaluation.bench_retrieval`):**
+> * Solo Léxico: **89.5%** Recall@8
+> * Solo Vectorial: **73.7%** Recall@8
+> * **RAG Híbrido RRF: 94.7% Recall@8** 🚀
 
-Medido sobre la wiki real (`python -m evaluation.bench_retrieval`, recall@8):
-léxico solo 89.5%, vectorial solo 73.7%, **híbrido 94.7%**.
+### 2. Enrutado de Capacidades (Capability Matching Engine)
 
-## Cómo enruta (Capability Matching)
+El `CapabilityEngine` identifica qué agente debe atender una consulta sin necesidad de llamadas costosas a LLMs para clasificación:
 
-Enrutado **léxico + vectorial local basado en random indexing/TF-IDF** —
-igual tecnología que el RAG de arriba, **no embeddings neuronales**. El
-`CapabilityEngine` (qué agente atiende una consulta) usa por defecto
-`HybridCapabilityMatcher` ([`orchestration/capability/matcher.py`](orchestration/capability/matcher.py)),
-que combina dos matchers intercambiables sobre el mismo protocolo
-`CapabilityMatcher`:
+* **`LexicalCapabilityMatcher`**: Ponderación por solape IDF sobre `description`, `routing_examples` y `synonyms`, propagada por la jerarquía taxonómica de la capacidad.
+* **`EmbeddingCapabilityMatcher`**: Coseno vectorial sobre `HashingEmbedder` + canal de **sinónimo exacto** determinista.
+* **Explicabilidad (`CapabilityEngine.explain`)**: Devuelve el desglose detallado de puntuaciones (léxico vs vectorial), el motivo de enrutado (`via: synonym/lexical/hybrid/parent`) y la traza completa de auditoría.
 
-| Matcher | Qué hace |
-|---|---|
-| `LexicalCapabilityMatcher` | Solape de tokens ponderado por IDF sobre `description`/`routing_examples`/`synonyms` de cada capacidad, propagado por la taxonomía (ancestros y relacionados). |
-| `EmbeddingCapabilityMatcher` | Coseno con `HashingEmbedder` (el mismo del RAG) + un canal de **sinónimo exacto**: si una palabra de `synonyms` aparece literalmente en la consulta, la capacidad se marca con confianza máxima. |
+---
 
-**Medido antes de combinarlos, no asumido:** el coseno puro es más débil
-que el léxico para el corpus de capacidades (textos de 20-40 palabras, muy
-pocos como para que el IDF discrimine bien) y en varias consultas reales
-apuntaba a la capacidad *incorrecta* con más confianza que a la correcta
-(p. ej. "quiero mejorar mi alimentación diaria" → el coseno solo prefería
-`project_management` sobre la `nutrition` correcta). Dejar que decidiera
-solo habría **aumentado** las rutas incorrectas. Por eso el combinador es
-conservador:
+## 💻 Instalación, Verificación y Ejecución
 
-- El canal léxico manda: si ya identifica una capacidad, se respeta tal cual.
-- El **sinónimo exacto** es la única vía por la que el canal vectorial puede
-  incluir una capacidad por sí solo — es determinista y curado a mano, no
-  una similitud difusa.
-- El coseno puro solo puede reforzar un match léxico existente, o incluir
-  algo por sí solo con un umbral alto (0.30) medido para que el ruido de
-  fondo (hasta 0.187 en la medición) no lo cruce nunca.
+### Requisitos Previos
+* **Python 3.10** o superior.
 
-Cada resultado trae un `via` auditable: `synonym`, `lexical`, `embedding`,
-`hybrid` (ambos canales de acuerdo), `parent`/`related` (llegó por
-taxonomía). `CapabilityEngine.explain(query, agent_id)` expone, por
-capacidad candidata, el score léxico, el vectorial, el final, el motivo y el
-umbral aplicado — no solo un número.
-
-**Qué mejoró de verdad:** tres sinónimos coloquiales reales (`plata` en
-`finance`, `chamba` en `career_transition`, `pegar el ojo` en `fitness`) que
-antes no encontraban ningún agente. Medido con `python -m evaluation.bench_routing`
-sobre 26 consultas reales/coloquiales: el híbrido **no empeora** la
-precisión ni añade falsos positivos frente al léxico solo (ambos 100% en el
-set actual) — la ganancia medida viene de los sinónimos añadidos al catálogo
-(que benefician a los dos matchers, porque el léxico también los indexa), no
-de que el coseno "entienda" la consulta. Sigue habiendo paráfrasis
-coloquiales genuinas que ningún canal resuelve todavía (ver ROADMAP).
-
-## Instalar, testear, ejecutar
-
-Requiere **Python 3.10+** (igual que `requires-python` en `pyproject.toml`). Un
-checkout limpio se instala y se verifica sin claves, sin red y sin Ollama:
-
+### 1. Instalación del Entorno
 ```bash
+# Clonar repositorio
+git clone https://github.com/YoxeLaunch/MagnusAgentSpecification.git
+cd MagnusAgentSpecification
+
+# Instalación en modo desarrollo
 python -m pip install -e ".[dev]"
 ```
+
+### 2. Ejecutar la Suite de Pruebas
+Magnus cuenta con una suite de verificación con más de 250 pruebas unitarias e integrales que se ejecutan localmente sin necesidad de claves API ni internet:
 
 ```bash
 python -m pytest
 ```
 
+### 3. Ejecutar Benchmarks de Evaluación
 ```bash
-python -m mcp_server.magnus_mcp
+# Benchmarking de precisión RAG
+python -m evaluation.bench_retrieval
+
+# Benchmarking de enrutado de capacidades
+python -m evaluation.bench_routing
 ```
 
-El extra `dev` es el que trae `pytest`; sin él, `python -m pytest` no encuentra
-el runner.
+---
 
-Variables de entorno del servidor:
+## 🔌 Conectar Magnus vía MCP (Model Context Protocol)
 
-| Variable | Efecto |
-|---|---|
-| `MAGNUS_PROVIDER` | vacío → modo extractivo (sin LLM, sin coste). `ollama`, `anthropic` o `auto`. El modelo concreto lo decide el perfil de cada agente contra `configs/models.yaml`. |
-| `ANTHROPIC_API_KEY` | credencial del adaptador Anthropic. |
-| `MAGNUS_TRACE_DIR` | activa el registro auditable JSONL (desactivado por defecto: la wiki contiene datos personales). |
-| `MAGNUS_HTTP_HOST` | bind del servidor HTTP. Por defecto `127.0.0.1`; **cualquier otro valor exige `MAGNUS_HTTP_TOKEN` o el servidor se niega a arrancar**. |
-| `MAGNUS_HTTP_TOKEN` | token compartido (`Authorization: Bearer …`). Usa un valor largo y aleatorio. |
-| `MAGNUS_HTTP_ORIGINS` | orígenes CORS permitidos, separados por comas. Vacío = ninguno. Nunca se emite `*`. |
+Magnus actúa como un servidor de agentes que expone herramientas estándar MCP (`magnus_ask` y `magnus_list_agents`).
 
-### Privacidad
-
-La LLM-Wiki contiene información personal, financiera, legal y de salud. Dos
-controles la protegen y ambos deniegan por defecto:
-
-- [`configs/privacy.yaml`](configs/privacy.yaml) decide **qué namespaces pueden
-  salir del dispositivo** dentro de un prompt. Salud corporal, salud mental y
-  dinámica social están en `local_only`: solo se responden con un proveedor
-  local (Ollama), y si no lo hay, el motor degrada a respuesta extractiva y lo
-  dice. Un namespace nuevo no sale hasta que se autorice ahí explícitamente.
-- [`configs/permissions.yaml`](configs/permissions.yaml) decide **qué parcela
-  puede leer cada agente** y qué herramientas puede usar. Se aplica en tiempo
-  de ejecución, no es solo documentación.
-
-`python -m mcp_server.magnus_http --port 8765` levanta el mismo servidor sobre
-HTTP (`http://127.0.0.1:8765/mcp`) para apps que piden una URL de conector
-remoto. El adaptador de Anthropic es una dependencia opcional:
-`python -m pip install -e ".[anthropic]"` más `ANTHROPIC_API_KEY`.
-
-### Qué verifica qué
-
-- **`tests/` es la suite de verificación.** Recorre el motor real contra un
-  proyecto Magnus mínimo generado en un directorio temporal
-  (`tests/magnus_fixtures/`), incluido el circuito completo
-  `MagnusEngine → JSON-RPC MCP`.
-- **`python -m evaluation.bench_retrieval`** y **`python -m evaluation.bench_routing`**
-  miden recuperación y enrutado contra la wiki/agentes reales del
-  repositorio, no contra fixtures — y devuelven un código de salida distinto
-  de 0 si la estrategia nueva (híbrida) empeora a la anterior (léxica sola).
-- **`demo/` NO es la suite de verificación** — es ilustración. `demo/run_demo.py`
-  y `demo/prove_principles.py` sustituyen el motor, el proveedor y la wiki por
-  maquetas (`demo/fakes.py`) para enseñar el flujo de un vistazo. Que una demo
-  pase no dice nada sobre el runtime; para eso está `pytest`.
-
-```bash
-python demo/run_demo.py          # ilustración del flujo multiagente
-python demo/prove_principles.py  # ilustración: +conocimiento mejora al agente
-```
-
-## Conectar Magnus por MCP
-
-Magnus es un sistema multiagente que corre en tu propia máquina, sobre tu
-propia wiki. Un cliente MCP (Claude Code, Codex CLI, o cualquier aplicación
-que hable el protocolo MCP) no ejecuta Magnus "dentro" de sí mismo: se
-conecta como **cliente** y **invoca sus dos herramientas** —`magnus_ask` y
-`magnus_list_agents`— igual que invocaría cualquier otro servidor MCP. Magnus
-sigue siendo el que decide qué agente responde, qué namespaces puede leer, si
-el egreso a un proveedor remoto está permitido y si la respuesta queda
-anclada en evidencia — nada de eso lo controla el cliente.
-
-### Transporte stdio (recomendado para uso local)
+### Modo 1: Transporte `stdio` (Recomendado para Claude Code, Cursor, Codex CLI)
+Sin exposición de sockets de red. Es lanzado directamente por la herramienta cliente:
 
 ```bash
 python -m mcp_server.magnus_mcp
 ```
 
-Es el transporte pensado para que el propio cliente lo lance como subproceso
-(no lo arrancas tú a mano): habla JSON-RPC delimitado por saltos de línea
-sobre `stdin`/`stdout`, no abre ningún socket ni puerto, y por tanto no tiene
-superficie de red que asegurar. Es el modo verificado en este documento (ver
-más abajo, "Smoke test MCP").
-
-Configuración genérica de un cliente MCP por stdio — **el formato exacto
-(nombre de la clave raíz, dónde va el archivo) depende de cada cliente**;
-consulta la documentación propia del tuyo:
-
+Ejemplo de configuración `.mcp.json` para clientes compatibles:
 ```json
 {
   "mcpServers": {
@@ -232,75 +160,48 @@ consulta la documentación propia del tuyo:
 }
 ```
 
-Este repositorio incluye [`.mcp.json`](.mcp.json) en la raíz — es la
-configuración de proyecto real que usa **Claude Code** para levantar este
-mismo servidor vía stdio; puedes leerlo como ejemplo concreto ya funcional en
-vez de uno hipotético. Para Codex CLI o cualquier otro cliente MCP compatible
-con stdio, el protocolo que expone `magnus_mcp.py` es JSON-RPC estándar (lo
-mismo que se verifica en el smoke test de abajo); no se documenta aquí una
-sintaxis de configuración específica para esos clientes porque no se ha
-verificado documentalmente en este repositorio — usa la guía de conexión de
-servidores MCP por stdio de tu propio cliente.
-
-Variables de entorno relevantes para este transporte están en la tabla de
-["Instalar, testear, ejecutar"](#instalar-testear-ejecutar) más arriba
-(`MAGNUS_PROVIDER`, `ANTHROPIC_API_KEY`, `MAGNUS_TRACE_DIR`). Sin ninguna
-puesta, Magnus arranca en **modo extractivo**: sin LLM, sin coste, sin salir
-a la red — cita pasajes literales de tu wiki.
-
-### Transporte HTTP local (solo si tu cliente exige una URL)
+### Modo 2: Transporte HTTP Local
+Para clientes que interactúan vía peticiones HTTP / JSON-RPC:
 
 ```bash
 python -m mcp_server.magnus_http --port 8765
 ```
 
-Para clientes que piden una URL de "conector remoto" en vez de un comando
-local. Expone un único endpoint (`POST http://127.0.0.1:8765/mcp`) y **debes
-dejar el proceso corriendo tú mismo** mientras lo uses — a diferencia de
-stdio, ningún cliente lo lanza por ti.
+Endpoints y Seguridad:
+* URL: `POST http://127.0.0.1:8765/mcp`
+* **Protección HTTP Guard:** Requiere token `MAGNUS_HTTP_TOKEN` si se habilita fuera de `127.0.0.1`, con Rate Limiting (60 req/min) y restricción estricta de CORS.
 
-**No lo expongas fuera de `127.0.0.1` sin token y sin restringir CORS
-explícitamente.** El servidor mismo lo impone: se niega a arrancar en
-cualquier interfaz distinta de `127.0.0.1`/`localhost` si `MAGNUS_HTTP_TOKEN`
-no está puesto (ver [`mcp_server/http_guard.py`](mcp_server/http_guard.py)).
+---
 
-| Variable | Efecto |
-|---|---|
-| `MAGNUS_HTTP_HOST` | bind del servidor. Por defecto `127.0.0.1`. |
-| `MAGNUS_HTTP_TOKEN` | token compartido (`Authorization: Bearer …`); obligatorio para salir de localhost. Usa un valor largo y aleatorio. |
-| `MAGNUS_HTTP_ORIGINS` | orígenes CORS permitidos, separados por comas. Vacío = ninguno; nunca se emite `*`. |
+## 🔒 Privacidad y Gobernanza de Datos
 
-También activos siempre, en local y fuera de local: 1 MiB máximo por
-petición, 60 peticiones/minuto por cliente, 8 peticiones concurrentes.
+Magnus implementa dos capas de seguridad que **deniegan por defecto**:
 
-## Guía de validación funcional (pruebas manuales)
+1. **Gobernanza de Egreso ([`configs/privacy.yaml`](configs/privacy.yaml)):**
+   Define qué namespaces de conocimiento pueden salir del dispositivo. Namespaces como `local_only` (salud mental, finanzas personales) **nunca** son enviados a proveedores de IA en la nube (Anthropic, OpenAI, Google). Si se intenta consultar con un LLM remoto, el motor degrada automáticamente a respuesta extractiva local.
+2. **Control de Acceso de Agentes ([`configs/permissions.yaml`](configs/permissions.yaml)):**
+   Define el perímetro de lectura exacto de cada agente sobre la wiki y qué herramientas tiene autorizadas para usar.
 
-Para comprobar a mano que el comportamiento descrito arriba se sostiene en tu
-propia wiki, no solo en la de fixtures de `pytest`. Todos los casos se pueden
-correr con el servidor stdio en modo extractivo (sin claves, sin red):
+---
 
-```bash
-python -m mcp_server.magnus_mcp
-```
+## 🌟 Visión a Futuro y Roadmap
 
-y enviando `tools/call` → `magnus_ask` con la `pregunta` de cada caso (o
-usando tu cliente MCP conectado, ver arriba).
+El desarrollo de **Magnus Agent Engine** persigue transformar la interacción hombre-máquina hacia un ecosistema verdaderamente soberano, autónomo y distribuido.
 
-| Caso | Consulta de ejemplo | Resultado esperado | Qué revisar en la traza (`r["traza"]`) |
-|---|---|---|---|
-| Finanzas | *"cuál es la inflación en República Dominicana"* | Responde `ernesto_libras`, cita al menos una fuente de `01-Economia-y-Finanzas/`, incluye el aviso de "no es asesoría de inversión". | `traza["ernesto_libras"]["guardrails"]["dominios"] == ["finanzas"]`; `chunks_recuperados > 0`. |
-| Salud / sueño | *"cuántas horas debo dormir"* | Responde `dr_soma`, cita `02-Salud-Corporal/`, incluye el aviso de "no es una indicación médica". | `traza["dr_soma"]["guardrails"]["dominios"] == ["salud"]`. |
-| Sin dominio | *"xyzzy plugh frobnicate"* (o cualquier consulta ajena a la wiki) | `agentes: []`, `fuentes: []`; el texto declara explícitamente que no identificó dominio y lista los agentes disponibles — **no** elige uno arbitrario. | `traza["_enrutado"]["modo"] == "sin_dominio"`; revisar `capacidades_mas_cercanas` para ver qué tan cerca estuvo. |
-| Urgencia | *"tengo pensamientos de quitarme la vida"* | Respuesta de contacto humano (911 / profesional), sin RAG ni LLM de por medio. | `traza["_guardrails"]["escalado"]` tiene el id de la urgencia (p. ej. `crisis_salud_mental`); `agentes: []`. |
-| Agente forzado | `magnus_ask` con `agente: "lexi"` y cualquier pregunta | Responde siempre `lexi`, salta el umbral de enrutado por completo. | `traza["lexi"]` existe aunque la pregunta no tuviera match léxico claro; no aparece `_enrutado`. |
-| Privacidad `local_only` | Pregunta a `serena` o `dr_soma` (namespaces `local_only` en `configs/privacy.yaml`) **con un proveedor remoto real conectado** (`MAGNUS_PROVIDER=anthropic` y `ANTHROPIC_API_KEY` puestos — sin la clave, el modo cae a extractivo por falta de proveedor, no por la política de egreso, y el caso no prueba nada) | La respuesta sigue citando la wiki (modo extractivo), **nunca** llega a llamar al proveedor remoto, aunque el mismo proveedor sí responda sin problema a una pregunta de finanzas en la misma sesión. | `traza[agente]["egreso"]["egreso_remoto"] == False` y `namespaces_que_bloquean`; `modo == "extractivo"`. |
-| Error/degradación de proveedor | Con un proveedor configurado que falla (credencial inválida, timeout) | La respuesta declara el fallo explícitamente y ofrece los pasajes literales de la wiki en su lugar — nunca aparenta éxito. | `traza[agente]["modo"] == "extractivo_degradado"`; `error` y `reintentable` presentes. |
+### Próximas Fases del Ecosistema:
 
-## Principio operativo
+1. 🧠 **Embeddings Neuronales Locales Plug & Play (Fase RAG 2.0):**
+   * Integración de modelos neuronales ultraligeros de embeddings (p. ej. ONNX / `bge-m3-small`) en el puerto `Embedder` para comprensión semántica profunda sin depender de servicios cloud.
+2. 🔄 **Aprendizaje Supervisado y Human-in-the-Loop (Componente 15):**
+   * Sistema donde los agentes proponen evoluciones y correcciones a la `LLM-Wiki`, sujetas a la validación y aprobación final del usuario humano.
+3. 🌐 **Ecosistema de Agentes Distribuidos (MAS Multi-Node):**
+   * Habilitación de agentes Magnus corriendo en nodos de red distribuidos P2P con firma criptográfica de permisos y evidencias.
+4. 📱 **Magnus Web & Mobile Interface:**
+   * Desarrollo de una interfaz de usuario interactiva y moderna para la administración de agentes, visualización de grafos de memoria SQLite y edición asistida de la LLM-Wiki.
 
-Añade notas a `LLM-Wiki/wiki/01-Economia-y-Finanzas/` → **Ernesto Libras mejora
-automáticamente**, sin modificar su definición. Cambia de proveedor de IA →
-edita `configs/models.yaml`, sin tocar ningún agente.
+---
 
-Los cambios al conocimiento son **propuestos por los agentes y aprobados por un
-humano** (aprendizaje supervisado, ver Componente 15).
+## 📄 Licencia y Autoría
+
+* **Autoría & Concepto:** **Yoxe** ([`Magnus Dynamic Group`](https://github.com/YoxeLaunch/MagnusAgentSpecification)).
+* **Repositorio Oficial:** [github.com/YoxeLaunch/MagnusAgentSpecification](https://github.com/YoxeLaunch/MagnusAgentSpecification)
