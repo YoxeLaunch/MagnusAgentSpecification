@@ -1,23 +1,122 @@
 # 🚀 Magnus Agent Engine (MAS)
 
-**Sistema operativo de agentes inteligentes soberano, independiente del proveedor de IA y centrado en privacidad (Local-First).**
+**Sistema operativo multiagente soberano, independiente del proveedor de IA y centrado en privacidad (Local-First).**
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+[![MCP Compatible](https://img.shields.io/badge/MCP-1.0_Compatible-purple.svg)](https://modelcontextprotocol.io/)
+[![RAG Recall](https://img.shields.io/badge/RAG_Recall-94.7%25-brightgreen.svg)](#1-sistema-rag-híbrido)
 
 > **Autoría & Desarrollo:** Creado y mantenido por **Yoxe / Magnus Dynamic Group** ([`YoxeLaunch/MagnusAgentSpecification`](https://github.com/YoxeLaunch/MagnusAgentSpecification)).
-> 
-> Los agentes en Magnus **no** almacenan conocimiento estático ni alucinan datos privados: consultan una base documental versionada (**LLM-Wiki**) mediante un pipeline RAG Híbrido y respetan el estándar **MAS** (Magnus Agent Specification). El motor es agnóstico del proveedor de LLM e incluye adaptadores nativos para **Anthropic**, **OpenAI**, **Google Gemini** y **Ollama** (ejecución 100% local).
 
 ---
 
-## 🎯 ¿Qué es Magnus Agent Engine?
+## ⏱️ Magnus en 10 Segundos
 
-**Magnus** es un entorno runtime y sistema operativo multiagente diseñado para resolver el dilema entre inteligencia artificial avanzada y privacidad/soberanía de los datos.
+### 1. ¿Qué problema resuelve?
+Las arquitecturas tradicionales de IA (LangChain, AutoGen, CrewAI) sufren del **dilema entre inteligencia y privacidad**: para responder preguntas complejas, fuerzan el envío de datos sensibles corporativos o personales (finanzas, salud, propiedad intelectual) a modelos de lenguaje en la nube, o alucinan al depender de conocimiento estático.
 
-En un entorno tradicional, enviar datos financieros, de salud o personales a modelos de lenguaje en la nube implica riesgos de privacidad, falta de gobernanza y alucinaciones. Magnus resuelve esto separando el **Razonamiento** (modelos de IA) del **Conocimiento** (archivos Markdown estructurados en `LLM-Wiki/`), imponiendo un control de acceso riguroso en tiempo de ejecución:
+**Magnus resuelve esto separando el Razonamiento (modelos de IA) del Conocimiento (`LLM-Wiki/` local en Markdown versionado)** e imponiendo un control estricto de **Gobernanza de Egreso de Datos (`privacy.yaml`)** en tiempo de ejecución.
 
-* **Conocimiento Soberano (Local-First):** Toda la información corporativa o personal reside en Markdown versionado en local.
-* **Seguridad y Privacidad Estricta:** Los namespaces marcados como `local_only` (ej. salud mental, finanzas personales) jamás abandonan el dispositivo hacia APIs externas.
-* **Integración MCP Nativa (Model Context Protocol):** Magnus opera como un servidor MCP listo para conectarse a clientes como Claude Code, Cursor, VSCode o agentes autónomos vía `stdio` o `HTTP`.
-* **Multi-Proveedor de IA:** Soporte dinámico para **Anthropic Claude**, **OpenAI (GPT-4o)**, **Google Gemini** y **Ollama**, con caída automática a respuestas extractivas si se carece de API Keys o conexión.
+### 2. ¿En qué se diferencia de soluciones existentes?
+
+| Característica | Frameworks Tradicionales (LangChain, CrewAI) | 🚀 **Magnus Agent Engine (MAS)** |
+|---|---|---|
+| **Soberanía y Privacidad** | Envía prompts completos y contexto a APIs externas | **Local-First:** Egreso bloqueado por políticas (`local_only` jamás sale a la nube) |
+| **Operación Offline / Air-Gapped** | Requiere conexión a internet y API Keys activas | **Modo Extractivo:** Funciona 100% offline a **costo $0** sin LLM ni API Keys |
+| **Recuperación RAG** | Vectorial simple / Búsqueda básica | **RAG Híbrido Calibrado (94.7% Recall):** TF-IDF + Random Indexing con RRF |
+| **Enrutado de Agentes** | Clasificación por LLM (costosa y lenta) | **Capability Engine:** Clasificación determinista semántico-léxica a **costo 0** |
+| **Estandarización** | Configuración ad-hoc por código | **Estándar MAS:** Agentes declarativos versionados en `agent.yaml` |
+| **Integración con IDEs** | Conectores propietarios | **Servidor MCP Nativo (`stdio` / `HTTP`):** Conexión directa a Claude Code, Cursor y VS Code |
+
+### 3. ¿Cómo se ve en código en 5 líneas?
+
+```python
+from sdk import MagnusEngine
+
+engine = MagnusEngine(root=".")
+resultado = engine.ask("¿Cómo organizo mi presupuesto y quiero invertir mi dinero?")
+
+print(f"🤖 Agentes: {resultado['agentes']}")
+print(f"💬 Respuesta: {resultado['respuesta']}")
+```
+
+---
+
+## 📐 Diagramas de Arquitectura
+
+### 1. Flujo de Datos y Pipeline de Privacidad/RAG
+
+```mermaid
+flowchart TD
+    A[👤 Usuario / Cliente MCP] -->|Consulta| B[🎯 Capability Engine]
+    B -->|Score Match > 0.35| C[🤖 Agente Seleccionado agent.yaml]
+    C --> D[🔒 Permission & Egress Policy privacy.yaml]
+    
+    D -->|Lectura Local| E[🧠 RAG Híbrido kernel/rag]
+    E -->|Recuperación Léxica TF-IDF| F1[Chunks de Evidence]
+    E -->|Recuperación Vectorial Cosine| F2[Chunks de Evidence]
+    F1 & F2 -->|Reciprocal Rank Fusion| G[⚡ Pasajes Calibrados 94.7% Recall]
+    
+    G --> H{¿Egreso Remoto Permitido?}
+    H -->|No / Sin API Keys| I[📝 Modo Extractivo Local Costo $0]
+    H -->|Sí + API Key| J[🌐 Provider Registry Ollama / Anthropic / OpenAI / Gemini]
+    
+    I & J --> K[⚖️ Evidence Evaluator & Guardrails]
+    K --> L[📊 Auditoría Audit Trace JSONL]
+    L --> M[💬 Respuesta Soberana con Citas Literales]
+```
+
+### 2. Estructura de Agentes y Arquitectura de Componentes
+
+```mermaid
+graph LR
+    subgraph Conocimiento
+        W[📁 LLM-Wiki / Markdown]
+    end
+
+    subgraph Definición MAS
+        A1[ernesto_libras/agent.yaml]
+        A2[dr_soma/agent.yaml]
+        A3[serena/agent.yaml]
+    end
+
+    subgraph Runtime Core
+        E[MagnusEngine]
+        P[Permission & Privacy Engine]
+        R[Hybrid RAG Engine]
+    end
+
+    subgraph Interfaces
+        CLI[SDK CLI]
+        SDK[Python SDK]
+        MCP[Servidor MCP stdio/HTTP]
+    end
+
+    W --> R
+    A1 & A2 & A3 --> E
+    E --> P
+    E --> R
+    E --> CLI & SDK & MCP
+```
+
+---
+
+## ⚡ PoC & Inicio Rápido (SDK Minimal)
+
+Puedes probar Magnus inmediatamente en tu entorno local sin registrar ninguna clave API:
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/YoxeLaunch/MagnusAgentSpecification.git
+cd MagnusAgentSpecification
+
+# 2. Instalar en modo desarrollo
+python -m pip install -e ".[dev]"
+
+# 3. Ejecutar la PoC minimalista (<20 líneas de código)
+python -m examples.quickstart
+```
 
 ---
 
@@ -38,15 +137,15 @@ En un entorno tradicional, enviar datos financieros, de salud o personales a mod
 
 El puerto `LLMProvider` ([`providers/base.py`](providers/base.py)) abstrae la comunicación con los modelos de lenguaje. Se seleccionan de forma transparente según el perfil del agente en `configs/models.yaml`:
 
+* **Modo Extractivo (Sin LLM / Sin Claves):** Si no hay API Key o proveedor activo, Magnus responde citando pasajes literales de la wiki sin costo ni llamadas externas.
 * **Ollama ([`providers/ollama_provider.py`](providers/ollama_provider.py)):** Ejecución 100% local, privado, sin coste y sin conexión a internet.
 * **Anthropic ([`providers/anthropic_provider.py`](providers/anthropic_provider.py)):** Modelos Claude (Claude 3.5 Sonnet, Claude 3 Opus, etc.).
 * **OpenAI ([`providers/openai_provider.py`](providers/openai_provider.py)):** Modelos GPT-4o, GPT-4o-mini y embeddings compatibles.
 * **Google Gemini ([`providers/google_provider.py`](providers/google_provider.py)):** Modelos Gemini 1.5 Pro y Gemini 1.5 Flash.
-* **Modo Extractivo (Sin LLM):** Si no hay API Key o proveedor activo, Magnus responde citando pasajes literales de la wiki sin costo ni llamadas externas.
 
 ---
 
-## 📐 Estructura del Repositorio y Arquitectura
+## 📐 Estructura del Repositorio
 
 ```
 MAGNUS/
@@ -58,6 +157,8 @@ MAGNUS/
 ├── providers/       # Adaptadores de IA (Anthropic, OpenAI, Google, Ollama, Registry)
 ├── kernel/rag/      # Ingesta de archivos, retriever léxico, vectorial y pipeline híbrido
 ├── mcp_server/      # Servidor MCP (transportes stdio y HTTP) + controles de acceso
+├── sdk/             # SDK de desarrollo y comandos CLI
+├── examples/        # Ejemplos ejecutables (quickstart PoC)
 ├── evaluation/      # Benchmarks de recuperación RAG y enrutado de capacidades
 ├── configs/         # models.yaml, permissions.yaml, privacy.yaml, guardrails.yaml
 ├── tests/           # Suite de verificación completa (250+ tests en pytest)
@@ -72,34 +173,6 @@ MAGNUS/
 | [`docs/01-MAS-especificacion.md`](docs/01-MAS-especificacion.md) | Especificación del estándar MAS: estructura de un agente, `agent.yaml`, validación y herencia. |
 | [`docs/02-COMPONENTES.md`](docs/02-COMPONENTES.md) | Los 15 componentes del sistema con sus interfaces, flujos y tecnologías. |
 | [`docs/04-MAGNUS-V2-ARQUITECTURA.md`](docs/04-MAGNUS-V2-ARQUITECTURA.md) | **Normativo.** Reconciliación runtime↔docs: Agent Registry, Capability Engine, herencia y SDK. |
-
----
-
-## 🔬 Especificaciones Técnicas
-
-### 1. Sistema RAG Híbrido (Retrieval-Augmented Generation)
-
-El sistema RAG en Magnus combina dos métodos complementarios sobre los mismos chunks de texto:
-
-| Retriever | Arquitectura / Algoritmo | Propósito |
-|---|---|---|
-| **Léxico** | [`kernel/rag/file_store.py`](kernel/rag/file_store.py) | Ponderación Term Frequency (TF) sobre tokens normalizados. Excelente para términos exactos y códigos. |
-| **Vectorial Local** | [`kernel/rag/embedder.py`](kernel/rag/embedder.py) + [`vector_store.py`](kernel/rag/vector_store.py) | **Random Indexing con pesos TF-IDF** sobre unigramas, bigramas y prefijos en español, evaluado por similitud de Coseno. No requiere dependencias pesadas (Torch/Transformers). |
-
-Los resultados se combinan mediante **Reciprocal Rank Fusion (RRF)** para determinar el orden de relevancia final, aplicando los umbrales específicos de cada agente (`min_score`).
-
-> **Rendimiento medido sobre el corpus real (`python -m evaluation.bench_retrieval`):**
-> * Solo Léxico: **89.5%** Recall@8
-> * Solo Vectorial: **73.7%** Recall@8
-> * **RAG Híbrido RRF: 94.7% Recall@8** 🚀
-
-### 2. Enrutado de Capacidades (Capability Matching Engine)
-
-El `CapabilityEngine` identifica qué agente debe atender una consulta sin necesidad de llamadas costosas a LLMs para clasificación:
-
-* **`LexicalCapabilityMatcher`**: Ponderación por solape IDF sobre `description`, `routing_examples` y `synonyms`, propagada por la jerarquía taxonómica de la capacidad.
-* **`EmbeddingCapabilityMatcher`**: Coseno vectorial sobre `HashingEmbedder` + canal de **sinónimo exacto** determinista.
-* **Explicabilidad (`CapabilityEngine.explain`)**: Devuelve el desglose detallado de puntuaciones (léxico vs vectorial), el motivo de enrutado (`via: synonym/lexical/hybrid/parent`) y la traza completa de auditoría.
 
 ---
 
@@ -140,7 +213,7 @@ python -m evaluation.bench_routing
 
 Magnus actúa como un servidor de agentes que expone herramientas estándar MCP (`magnus_ask` y `magnus_list_agents`).
 
-### Modo 1: Transporte `stdio` (Recomendado para Claude Code, Cursor, Codex CLI)
+### Modo 1: Transporte `stdio` (Recomendado para Claude Code, Cursor, VS Code)
 Sin exposición de sockets de red. Es lanzado directamente por la herramienta cliente:
 
 ```bash
@@ -184,24 +257,6 @@ Magnus implementa dos capas de seguridad que **deniegan por defecto**:
 
 ---
 
-## 🌟 Visión a Futuro y Roadmap
+## 📜 Licencia & Créditos
 
-El desarrollo de **Magnus Agent Engine** persigue transformar la interacción hombre-máquina hacia un ecosistema verdaderamente soberano, autónomo y distribuido.
-
-### Próximas Fases del Ecosistema:
-
-1. 🧠 **Embeddings Neuronales Locales Plug & Play (Fase RAG 2.0):**
-   * Integración de modelos neuronales ultraligeros de embeddings (p. ej. ONNX / `bge-m3-small`) en el puerto `Embedder` para comprensión semántica profunda sin depender de servicios cloud.
-2. 🔄 **Aprendizaje Supervisado y Human-in-the-Loop (Componente 15):**
-   * Sistema donde los agentes proponen evoluciones y correcciones a la `LLM-Wiki`, sujetas a la validación y aprobación final del usuario humano.
-3. 🌐 **Ecosistema de Agentes Distribuidos (MAS Multi-Node):**
-   * Habilitación de agentes Magnus corriendo en nodos de red distribuidos P2P con firma criptográfica de permisos y evidencias.
-4. 📱 **Magnus Web & Mobile Interface:**
-   * Desarrollo de una interfaz de usuario interactiva y moderna para la administración de agentes, visualización de grafos de memoria SQLite y edición asistida de la LLM-Wiki.
-
----
-
-## 📄 Licencia y Autoría
-
-* **Autoría & Concepto:** **Yoxe** ([`Magnus Dynamic Group`](https://github.com/YoxeLaunch/MagnusAgentSpecification)).
-* **Repositorio Oficial:** [github.com/YoxeLaunch/MagnusAgentSpecification](https://github.com/YoxeLaunch/MagnusAgentSpecification)
+Desarrollado y mantenido por **Yoxe / Magnus Dynamic Group** ([`YoxeLaunch/MagnusAgentSpecification`](https://github.com/YoxeLaunch/MagnusAgentSpecification)) bajo licencia **Apache-2.0**.

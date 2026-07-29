@@ -41,17 +41,39 @@ Magnus combina cuatro disciplinas:
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│  INTERFACES        API REST · CLI · Dashboard · Webhooks        │
+│  INTERFACES        API REST · CLI · Dashboard · Webhooks      │
 ├───────────────────────────────────────────────────────────────┤
 │  APPLICATION       Casos de uso / Orquestación                  │
 │                    Router · Planner · Delegation · Evaluator    │
 ├───────────────────────────────────────────────────────────────┤
-│  DOMAIN            Agent · Knowledge · Memory · Task · Evidence  │
+│  DOMAIN            Agent · Knowledge · Memory · Task · Evidence │
 │  (puro, sin I/O)   Policies · Constitution · MAS                │
 ├───────────────────────────────────────────────────────────────┤
 │  INFRASTRUCTURE    Providers · VectorStore · EventBus · DB      │
 │  (adaptadores)     Tools(MCP) · Audit · Auth · Cache            │
 └───────────────────────────────────────────────────────────────┘
+```
+
+### Flujo de Datos y Pipeline de Ejecución
+
+```mermaid
+flowchart TD
+    A[👤 Usuario / Cliente MCP] -->|Consulta| B[🎯 Capability Engine]
+    B -->|Score Match > 0.35| C[🤖 Agente Seleccionado agent.yaml]
+    C --> D[🔒 Permission & Egress Policy privacy.yaml]
+    
+    D -->|Lectura Local| E[🧠 RAG Híbrido kernel/rag]
+    E -->|Recuperación Léxica TF-IDF| F1[Chunks de Evidence]
+    E -->|Recuperación Vectorial Cosine| F2[Chunks de Evidence]
+    F1 & F2 -->|Reciprocal Rank Fusion| G[⚡ Pasajes Calibrados 94.7% Recall]
+    
+    G --> H{¿Egreso Remoto Permitido?}
+    H -->|No / Sin API Keys| I[📝 Modo Extractivo Local Costo $0]
+    H -->|Sí + API Key| J[🌐 Provider Registry Ollama / Anthropic / OpenAI / Gemini]
+    
+    I & J --> K[⚖️ Evidence Evaluator & Guardrails]
+    K --> L[📊 Auditoría Audit Trace JSONL]
+    L --> M[💬 Respuesta Soberana con Citas Literales]
 ```
 
 **Regla de oro:** el dominio no importa nada de infraestructura. `Agent` no sabe si el LLM es Anthropic u Ollama; solo conoce el puerto `LLMProvider`.
