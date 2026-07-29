@@ -327,7 +327,7 @@ class AgentRegistry:
         try:
             leaf_raw = self._resolver.read_agent_yaml(path)
             raw = self._resolver.resolve_yaml(path) if leaf_raw.get("extends") else leaf_raw
-        except (InheritanceError, Exception) as e:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             return ValidationResult(agent_dir_name, False, [f"error de carga: {e}"])
         raw = dict(raw)
         raw["status"] = status_override

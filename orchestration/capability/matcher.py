@@ -36,15 +36,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from kernel.rag.embedder import HashingEmbedder, coseno
+from kernel.rag.embedder import HashingEmbedder, coseno, _STOP
 from orchestration.registry.capability_catalog import Capability, CapabilityCatalog
-
-_STOP = {
-    "de", "la", "el", "en", "y", "a", "los", "las", "un", "una", "que", "con",
-    "por", "para", "del", "al", "se", "su", "sus", "o", "es", "como", "mas",
-    "mi", "tu", "yo", "me", "te", "le", "lo", "no", "si", "tengo", "quiero",
-    "the", "of", "to", "and", "in", "for", "on", "is", "are",
-}
 
 _ANCESTOR_DECAY = 0.5   # score que sube a cada nivel de ancestro se reduce a la mitad por nivel
 _RELATED_WEIGHT = 0.3   # fracción fija que se propaga a una capacidad `related`

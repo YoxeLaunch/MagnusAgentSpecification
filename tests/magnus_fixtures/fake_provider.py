@@ -9,6 +9,8 @@ maqueta paralela.
 from __future__ import annotations
 
 import re
+import threading
+import time
 from dataclasses import dataclass
 from typing import Callable, Iterator
 
@@ -33,18 +35,30 @@ class FakeProvider(LLMProvider):
     """
 
     def __init__(self, name: str = "fake", *, text: str | Callable[[LLMRequest], str] | None = None,
-                 fail_with: ProviderError | None = None, fail_times: int = 10**9):
+                 fail_with: ProviderError | None = None, fail_times: int = 10**9,
+                 delay_s: float = 0.0):
         self.name = name
         self._text = text
         self._fail_with = fail_with
         self._fail_times = fail_times
+        self._delay_s = delay_s
         self.calls: list[RecordedCall] = []
+        self._lock = threading.Lock()
+        #: instantes (inicio, fin) de cada llamada — permite a un test verificar
+        #: que dos llamadas se solaparon en el tiempo (paso 2.2: paralelización).
+        self.call_windows: list[tuple[float, float]] = []
 
     def supports(self, cap: Capability) -> bool:
         return cap in {Capability.STREAMING}
 
     def complete(self, req: LLMRequest, resolved: ResolvedModel) -> LLMResponse:
-        self.calls.append(RecordedCall(req, resolved))
+        inicio = time.monotonic()
+        with self._lock:
+            self.calls.append(RecordedCall(req, resolved))
+        if self._delay_s:
+            time.sleep(self._delay_s)
+        with self._lock:
+            self.call_windows.append((inicio, time.monotonic()))
         if self._fail_with is not None and len(self.calls) <= self._fail_times:
             raise self._fail_with
         if callable(self._text):

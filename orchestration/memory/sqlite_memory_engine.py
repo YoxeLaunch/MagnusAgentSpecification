@@ -80,7 +80,14 @@ class SqliteMemoryEngine:
     def recall(self, scope: MemoryScope, query: str, k: int = 5) -> list[MemoryItem]:
         if scope.type == MemoryType.SHORT_TERM:
             entries = self._short_term.get(scope.session_id or "", [])
-            items = [it for sc, it in entries if not query or query.lower() in it.text.lower()]
+            # Filtrar también por agent_id/user_id, no solo por session_id: dos
+            # agentes distintos pueden compartir el mismo session_id (una
+            # conversación que consulta a más de uno), y sin este filtro cada
+            # uno vería los turnos del otro — una fuga de memoria entre
+            # agentes, no una feature de "memoria compartida de sesión".
+            items = [it for sc, it in entries
+                     if sc.agent_id == scope.agent_id and sc.user_id == scope.user_id
+                     and (not query or query.lower() in it.text.lower())]
             return items[-k:]
 
         sql = ("SELECT text, metadata, timestamp FROM memory_items "

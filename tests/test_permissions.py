@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 
 from orchestration.engine import MagnusEngine
-from orchestration.permissions import PermissionDenied, PermissionEngine
+from orchestration.permissions import NamespaceGranularityError, PermissionDenied, PermissionEngine
 
 from magnus_fixtures.fake_provider import citing_provider
 
@@ -38,6 +38,32 @@ def test_un_namespace_fuera_de_knowledge_sources_se_deniega(mini_root):
 
     assert not decision
     assert "no está en knowledge.sources" in decision.reason
+
+
+def test_politica_mas_especifica_que_namespace_ancho_falla_ruidosamente(mini_root_mutable):
+    """El RAG solo indexa namespaces de primer nivel (kernel/rag/file_store.py:87):
+    no existe granularidad de subcarpeta. Si una política intenta acotar
+    '01-Finanzas' declarado por el agente a la subcarpeta '01-Finanzas/personal',
+    no hay forma de honrar eso en la recuperación real — devolver esa subcarpeta
+    como namespace válido produciría una consulta que siempre recupera cero
+    chunks, indistinguible de "la wiki no habla de esto". En vez de ese fallo
+    silencioso, `allowed_namespaces()` debe rechazar la política con un error
+    explícito que señale exactamente cuál es el problema.
+    """
+    p = PermissionEngine.from_yaml(mini_root_mutable / "configs" / "permissions.yaml")
+
+    p._policies["test_estricto"] = p._policies["test_readonly"].__class__(
+        id="test_estricto", knowledge_read=["01-Finanzas/personal"])
+
+    class _AgenteAncho:
+        id = "fina_ancho"
+        permissions_policy_ref = "test_estricto"
+        knowledge_sources = ["01-Finanzas"]
+
+    agente = _AgenteAncho()
+
+    with pytest.raises(NamespaceGranularityError, match="01-Finanzas/personal"):
+        p.allowed_namespaces(agente)
 
 
 def test_una_politica_inexistente_no_concede_nada(mini_root_mutable):

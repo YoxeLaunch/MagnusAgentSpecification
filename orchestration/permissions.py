@@ -22,6 +22,12 @@ Consecuencia práctica de aplicar la política de verdad: se descubrió que
 declara `01-Economia-y-Finanzas`. Con enforcement real, ese agente se quedaba
 sin poder leer nada. Es exactamente el tipo de deriva que una política escrita
 pero nunca aplicada acumula sin que nadie se entere.
+
+Estado en Runtime: El enforcement de namespaces de conocimiento (`allowed_namespaces`)
+está totalmente conectado y activo en `MagnusEngine.ask()`. Las funciones de
+comprobación de herramientas (`check_tool()`, `require_tool()`, `rol_puede()`)
+están 100% probadas en aislamiento y listas para invocarse tan pronto como el
+motor ejecute bucles de herramientas MCP arbitrarias.
 """
 from __future__ import annotations
 
@@ -64,13 +70,26 @@ class PermissionDenied(PermissionError):
     """La política efectiva no autoriza la operación."""
 
 
+class NamespaceGranularityError(ValueError):
+    """Una política acota `knowledge.read` a una subcarpeta que el RAG no
+    puede indexar (ver `kernel/rag/file_store.py:87` — el namespace de un
+    chunk es solo el primer segmento de ruta bajo `wiki/`; no existe
+    granularidad de subcarpeta). Antes de esta excepción, `allowed_namespaces()`
+    devolvía ese patrón acotado como si fuera un namespace válido, y el
+    resultado era una consulta que retornaba cero chunks siempre — un
+    'mínimo privilegio' que en realidad era un fallo silencioso, no una
+    denegación ni un acotamiento real. Corregir la política (declarar el
+    namespace de primer nivel completo, o denegarlo del todo) es la única
+    salida; no hay forma de honrar la subcarpeta con la arquitectura actual."""
+
+
 def _coincide(namespace: str, patron: str) -> bool:
-    """`*` concede todo; el resto compara por prefijo de ruta."""
+    """`*` concede todo; `namespace` debe coincidir exactamente o estar contenido dentro de `patron`."""
     if patron.strip() == "*":
         return True
     p = patron.rstrip("/")
     ns = namespace.rstrip("/")
-    return ns == p or ns.startswith(p + "/") or p.startswith(ns + "/")
+    return ns == p or ns.startswith(p + "/")
 
 
 class PermissionEngine:
@@ -117,11 +136,33 @@ class PermissionEngine:
 
     # -- conocimiento ---------------------------------------------------------
     def allowed_namespaces(self, agent) -> list[str]:
-        """Los `knowledge.sources` del agente que su política sí autoriza."""
+        """Los `knowledge.sources` del agente que su política sí autoriza.
+
+        Si la política acota un namespace declarado a una subcarpeta
+        (ej. agente declara '01-Finanzas', política solo concede
+        '01-Finanzas/personal'), se rechaza con `NamespaceGranularityError`
+        en vez de devolver esa subcarpeta como si el RAG pudiera filtrar por
+        ella — no puede (ver `NamespaceGranularityError`). Esto es
+        intencionalmente una falla ruidosa en config-load/primera consulta,
+        no una denegación silenciosa: una política así está mal escrita para
+        la arquitectura actual y debe corregirse, no "funcionar a medias".
+        """
         policy = self.policy_for(agent)
         permitidos, denegados = [], []
         for ns in agent.knowledge_sources:
-            (permitidos if policy.permite_leer(ns) else denegados).append(ns)
+            if "*" in policy.knowledge_read or any(_coincide(ns, p) for p in policy.knowledge_read):
+                permitidos.append(ns)
+                continue
+            mas_especificos = [p.rstrip("/") for p in policy.knowledge_read
+                                if p.rstrip("/").startswith(ns.rstrip("/") + "/")]
+            if mas_especificos:
+                raise NamespaceGranularityError(
+                    f"agente {agent.id}: la política '{policy.id}' acota '{ns}' a "
+                    f"la(s) subcarpeta(s) {mas_especificos}, pero el RAG solo indexa "
+                    f"namespaces de primer nivel bajo wiki/ (kernel/rag/file_store.py) "
+                    f"y no puede honrar esa granularidad. Declara '{ns}' completo en "
+                    f"permissions.knowledge.read, o deniégalo del todo — no una subcarpeta.")
+            denegados.append(ns)
         if denegados:
             log.warning(
                 "agente %s: la política '%s' deniega la lectura de %s "
@@ -129,9 +170,17 @@ class PermissionEngine:
                 agent.id, policy.id, denegados)
         return permitidos
 
+    def _agente_declara(self, agent, namespace: str) -> bool:
+        ns = namespace.rstrip("/")
+        for src in agent.knowledge_sources:
+            s = src.rstrip("/")
+            if ns == s or ns.startswith(s + "/"):
+                return True
+        return False
+
     def can_read(self, agent, namespace: str) -> Decision:
         policy = self.policy_for(agent)
-        if namespace not in agent.knowledge_sources:
+        if not self._agente_declara(agent, namespace):
             return Decision(False, f"'{namespace}' no está en knowledge.sources de {agent.id}")
         if not policy.permite_leer(namespace):
             return Decision(False, f"la política '{policy.id}' no concede lectura de '{namespace}'")

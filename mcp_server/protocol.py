@@ -33,8 +33,8 @@ def _build_provider_registry():
     """Construye el `ProviderRegistry` según `MAGNUS_PROVIDER`.
 
     Valores: vacío/`none` → extractivo (sin LLM, sin coste). `ollama`,
-    `anthropic` → solo ese adaptador. `auto` → todos los que estén
-    instalados y configurados.
+    `anthropic`, `openai`, `google` → solo ese adaptador. `auto` → todos los
+    que estén instalados y configurados.
 
     Nunca decide el modelo: eso lo dice el perfil de cada agente resuelto
     contra `configs/models.yaml`. Aquí solo se decide QUÉ ADAPTADORES existen.
@@ -59,6 +59,26 @@ def _build_provider_registry():
                 log("adaptador disponible: anthropic")
             except ImportError:
                 log("anthropic omitido: falta el paquete ('pip install magnus[anthropic]')")
+    if modo in ("openai", "auto"):
+        if not os.environ.get("OPENAI_API_KEY"):
+            log("openai omitido: falta OPENAI_API_KEY")
+        else:
+            try:
+                from providers.openai_provider import OpenAIProvider
+                adaptadores["openai"] = OpenAIProvider()
+                log("adaptador disponible: openai")
+            except ImportError:
+                log("openai omitido: falta el paquete ('pip install magnus[openai]')")
+    if modo in ("google", "auto"):
+        if not os.environ.get("GOOGLE_API_KEY"):
+            log("google omitido: falta GOOGLE_API_KEY")
+        else:
+            try:
+                from providers.google_provider import GoogleProvider
+                adaptadores["google"] = GoogleProvider()
+                log("adaptador disponible: google")
+            except ImportError:
+                log("google omitido: falta el paquete ('pip install magnus[google-genai]')")
 
     if not adaptadores:
         log(f"MAGNUS_PROVIDER='{modo}' no produjo ningún adaptador → modo extractivo")

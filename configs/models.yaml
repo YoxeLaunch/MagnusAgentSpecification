@@ -2,14 +2,19 @@
 # Los agentes MAS declaran `model.profile`; NUNCA un modelo hardcodeado.
 # Cambiar de proveedor = editar este archivo, sin tocar ningún agente.
 #
-# ADAPTADORES IMPLEMENTADOS HOY: `anthropic` y `ollama`. Un perfil que resuelva
-# a cualquier otro proveedor falla con `ProviderUnavailable` — un error
-# normalizado y explícito, no un KeyError — y cae al siguiente endpoint del
-# plan de fallback si lo hay (ver la política en providers/registry.py).
+# ADAPTADORES IMPLEMENTADOS HOY: `anthropic`, `ollama`, `openai` y `google`.
+# Un perfil que resuelva a cualquier otro proveedor falla con
+# `ProviderUnavailable` — un error normalizado y explícito, no un KeyError —
+# y cae al siguiente endpoint del plan de fallback si lo hay (ver la política
+# en providers/registry.py).
 #
-# Los fallbacks a openai/mistral/openrouter que declaraba este archivo se
-# retiraron: prometían una red de seguridad inexistente. Vuelven cuando exista
-# el adaptador correspondiente (paso 6 del ROADMAP).
+# `openai`/`google` tienen adaptador (providers/openai_provider.py,
+# providers/google_provider.py) pero NINGÚN perfil de abajo los referencia
+# todavía a propósito: incorporarlos a la cadena de fallback es una decisión
+# de producto (qué perfil degrada a qué proveedor) separada de tener el
+# adaptador. Los fallbacks a mistral/openrouter siguen retirados: prometían
+# una red de seguridad inexistente. Vuelven cuando exista el adaptador
+# correspondiente (paso 6 del ROADMAP).
 
 profiles:
   reasoning_high:
@@ -30,11 +35,11 @@ profiles:
 providers:
   anthropic:  { api_key_env: ANTHROPIC_API_KEY }   # adaptador: providers/anthropic_provider.py
   ollama:     { base_url: "http://localhost:11434" }  # adaptador: providers/ollama_provider.py
+  openai:     { api_key_env: OPENAI_API_KEY }      # adaptador: providers/openai_provider.py
+  google:     { api_key_env: GOOGLE_API_KEY }      # adaptador: providers/google_provider.py
 
   # Declarados para documentar la intención, SIN adaptador todavía. Ningún
   # perfil de arriba los referencia a propósito.
-  openai:     { api_key_env: OPENAI_API_KEY,     adapter: pendiente }
-  google:     { api_key_env: GOOGLE_API_KEY,     adapter: pendiente }
   mistral:    { api_key_env: MISTRAL_API_KEY,    adapter: pendiente }
   openrouter: { api_key_env: OPENROUTER_API_KEY, adapter: pendiente }
 

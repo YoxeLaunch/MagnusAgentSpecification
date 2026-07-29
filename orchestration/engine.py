@@ -23,6 +23,8 @@ la orquestación.
 from __future__ import annotations
 
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,7 +36,8 @@ from providers.registry import ProviderRegistry, ProviderTrace
 
 from .audit import NullTraceStore, TraceStore, build_entry
 from .evaluation import CitationEvaluator, EvaluationResult, Evaluator, Guardrails
-from .permissions import PermissionEngine
+from .memory.memory_engine import MemoryEngine, MemoryItem, MemoryScope, MemoryType, NullMemoryEngine
+from .permissions import NamespaceGranularityError, PermissionEngine
 from .privacy import EgressPolicy
 from .registry.agent_registry import AgentRegistry, AgentSpec, LoadReport
 from .registry.capability_catalog import CapabilityCatalog
@@ -59,6 +62,21 @@ class AgentResult:
     sources: list[str] = field(default_factory=list)
     n_chunks: int = 0
     trace: dict = field(default_factory=dict)
+
+
+@dataclass
+class _PendingLLM:
+    """Un agente que sí va a llamar a un proveedor: todo lo previo (permisos,
+    guardrails, recuperación, egreso, disponibilidad) ya se resolvió en el
+    hilo principal — lo único que falta es la llamada de red, que es la parte
+    cara y la única que vale la pena paralelizar (paso 2.2 del ROADMAP)."""
+    agent: AgentSpec
+    message: str
+    ctx: RAGContext
+    check: object
+    sources: list[str]
+    base_trace: dict
+    req: LLMRequest
 
 
 class MagnusEngine:
@@ -90,6 +108,27 @@ class MagnusEngine:
             se considera sin dominio identificado y no se enruta a ningún
             agente. Bajarlo hace que el motor adivine; subirlo lo hace más
             reticente a responder.
+        memory: `MemoryEngine` inyectable (paso 2.1 del ROADMAP). Por defecto
+            `NullMemoryEngine` — no recuerda nada, mismo patrón opt-in que
+            `trace_store`. Con una implementación real (p. ej.
+            `SqliteMemoryEngine`), `ask()` recupera turnos previos de la
+            sesión/usuario ANTES de construir el prompt del LLM y graba el
+            turno actual DESPUÉS de responder — nunca dentro de la
+            construcción de `RAGRequest`: la memoria conversacional y la
+            evidencia de la wiki son dos fuentes distintas, con distinta
+            política de citación (la memoria nunca se cita como fuente).
+
+            ⚠ Aviso de privacidad conocido: a diferencia de los chunks de la
+            wiki, los ítems de memoria no llevan namespace y por lo tanto NO
+            pasan por `EgressPolicy`. Hoy solo se adjuntan al prompt cuando el
+            egreso de LOS CHUNKS recuperados en esa consulta permite salir a
+            un proveedor remoto — pero el contenido de la memoria en sí puede
+            venir de un tema más sensible que el de la consulta actual.
+            Cerrar esto de raíz requiere etiquetar `MemoryItem`/`MemoryScope`
+            con sensibilidad — ver CAMINO.md, Fase 2.
+        max_provider_workers: tamaño del pool usado para llamar a proveedores
+            en paralelo cuando el enrutado devuelve más de un agente. Con 1
+            agente (el caso común) no se crea ningún hilo.
     """
 
     def __init__(self, root: str | Path, provider=None, *,
@@ -104,7 +143,9 @@ class MagnusEngine:
                  permissions: PermissionEngine | None = None,
                  egress: EgressPolicy | None = None,
                  caller_role: str = "operator",
-                 routing_min_score: float = ROUTING_MIN_SCORE):
+                 routing_min_score: float = ROUTING_MIN_SCORE,
+                 memory: MemoryEngine | None = None,
+                 max_provider_workers: int = 4):
         self.root = Path(root)
         self.top_k = top_k
         self.min_score = min_score
@@ -116,12 +157,15 @@ class MagnusEngine:
         self.guardrails = guardrails if guardrails is not None else Guardrails.from_yaml(
             self.root / "configs" / "guardrails.yaml")
         self.trace_store = trace_store if trace_store is not None else NullTraceStore()
+        self._trace_lock = threading.Lock()  # `ask()` puede llamar proveedores en paralelo
         self.permissions = permissions if permissions is not None else PermissionEngine.from_yaml(
             self.root / "configs" / "permissions.yaml")
         self.egress = egress if egress is not None else EgressPolicy.from_yaml(
             self.root / "configs" / "privacy.yaml")
         self.caller_role = caller_role
         self.routing_min_score = routing_min_score
+        self.memory = memory if memory is not None else NullMemoryEngine()
+        self.max_provider_workers = max_provider_workers
 
         self.capabilities = CapabilityCatalog(self.root / "capabilities").load_all()
         self.registry = AgentRegistry(
@@ -133,6 +177,7 @@ class MagnusEngine:
         )
         self._load_report: LoadReport = self.registry.load_all()
         self.capability_engine = CapabilityEngine(self.capabilities, self.registry)
+        self._verificar_granularidad_de_namespaces()
 
         self.providers = providers if providers is not None else _envolver(provider, self.root)
 
@@ -172,6 +217,24 @@ class MagnusEngine:
         return [{"id": a.id, "nombre": a.name, "namespaces": a.knowledge_sources}
                 for a in self.registry.list(status="active")]
 
+    def _verificar_granularidad_de_namespaces(self) -> None:
+        """Falla ruidosamente en construcción, no en la primera consulta afectada.
+
+        `PermissionEngine.allowed_namespaces()` lanza `NamespaceGranularityError`
+        si una política acota un namespace declarado a una subcarpeta que el RAG
+        no puede indexar (kernel/rag/file_store.py: el namespace de un chunk es
+        solo el primer segmento bajo wiki/). Recorrer aquí a todos los agentes
+        activos convierte un error de configuración en un fallo inmediato al
+        levantar el motor, en vez de uno que solo aparece cuando alguien hace la
+        pregunta equivocada al agente equivocado.
+        """
+        for a in self.registry.list(status="active"):
+            try:
+                self.permissions.allowed_namespaces(a)
+            except NamespaceGranularityError as e:
+                raise NamespaceGranularityError(
+                    f"configuración inválida detectada al levantar el motor: {e}") from e
+
     # -- enrutado (delegado al Capability Engine, sin keywords en código) --
     def _route(self, message: str) -> list[AgentSpec]:
         """Agentes cuya capacidad alcanza el umbral, o lista vacía.
@@ -189,7 +252,12 @@ class MagnusEngine:
             message, k=3, min_score=self.routing_min_score)
 
     # -- consulta principal ----------------------------------------------
-    def ask(self, message: str, agent_id: str | None = None) -> dict:
+    def ask(self, message: str, agent_id: str | None = None, *,
+            user_id: str = "anonimo", session_id: str | None = None) -> dict:
+        """user_id/session_id habilitan memoria (paso 2.1): sin `session_id`
+        no hay memoria de sesión (short_term) y solo se consulta/graba
+        long_term bajo `user_id` (por defecto un usuario anónimo compartido,
+        equivalente a no tener memoria persistente en la práctica)."""
         agents = [self.registry.get(agent_id)] if agent_id else self._route(message)
 
         # Señales de urgencia: se comprueban ANTES de recuperar evidencia o
@@ -205,14 +273,27 @@ class MagnusEngine:
         if not agents:
             return self._sin_dominio(message)
 
-        results: list[AgentResult] = []
+        # Fase 1 (secuencial, barata): permisos, guardrails, recuperación de
+        # evidencia y de memoria. Nada de esto hace red — es CPU/disco local,
+        # así que paralelizarlo no ahorraría nada y complicaría el manejo de
+        # errores de permisos/namespace por agente.
+        results: list[AgentResult | None] = []
+        pendientes: list[tuple[int, _PendingLLM]] = []
         for a in agents:
             check = self.guardrails.check(message, [c.id for c in a.capabilities])
 
             # Enforcement de permisos ANTES de recuperar: la parcela efectiva
             # es la intersección de knowledge.sources y la política del agente,
             # no lo que el agente declara por su cuenta.
-            namespaces = self.permissions.allowed_namespaces(a)
+            try:
+                namespaces = self.permissions.allowed_namespaces(a)
+            except NamespaceGranularityError as e:
+                # Defensa en profundidad: `_verificar_granularidad_de_namespaces`
+                # ya cubre esto al construir el motor para todos los agentes
+                # activos; esto solo protege contra un `registry.reload()` que
+                # introduzca la misma configuración inválida después de arrancar.
+                results.append(self._denegado_por_configuracion(a, message, check, e))
+                continue
             if not namespaces:
                 results.append(self._denegado_por_permisos(a, message, check))
                 continue
@@ -224,7 +305,31 @@ class MagnusEngine:
                 min_score=a.min_score if a.min_score is not None else self.min_score,
                 # y la exigencia de citas, en evaluation.require_citations
                 require_citations=a.require_citations))
-            results.append(self._agent_answer(a, message, ctx, check))
+            memoria = self._recall_memoria(a, user_id, session_id, message)
+            resuelto = self._preparar_respuesta(a, message, ctx, check, memoria)
+            if isinstance(resuelto, AgentResult):
+                results.append(resuelto)
+            else:
+                results.append(None)  # se completa en la Fase 2
+                pendientes.append((len(results) - 1, resuelto))
+
+        # Fase 2 (la única que hace red): llamadas a proveedor. En paralelo
+        # solo si hay más de una — con 0 o 1 agente pendiente, un
+        # ThreadPoolExecutor no ahorra nada y solo añade overhead.
+        if len(pendientes) == 1:
+            idx, p = pendientes[0]
+            results[idx] = self._resolver_pendiente(p)
+        elif pendientes:
+            with ThreadPoolExecutor(
+                    max_workers=min(self.max_provider_workers, len(pendientes))) as pool:
+                resueltos = pool.map(self._resolver_pendiente, [p for _, p in pendientes])
+                for (idx, _), resultado in zip(pendientes, resueltos):
+                    results[idx] = resultado
+
+        if session_id:
+            for a, r in zip(agents, results):
+                if r is not None and r.n_chunks > 0:
+                    self._recordar_turno(a, user_id, session_id, message, r.answer)
 
         merged = self._merge(message, results)
         return {
@@ -233,6 +338,42 @@ class MagnusEngine:
             "fuentes": sorted({s for r in results for s in r.sources}),
             "traza": {r.agent_id: r.trace for r in results},
         }
+
+    # -- memoria (paso 2.1 del ROADMAP) ------------------------------------
+    def _recall_memoria(self, a: AgentSpec, user_id: str, session_id: str | None,
+                        message: str) -> str:
+        """Turnos previos relevantes (sesión + histórico de usuario), o cadena
+        vacía si no hay ninguno o la memoria está desactivada (`NullMemoryEngine`)."""
+        items: list[MemoryItem] = []
+        if session_id:
+            # Sin filtro de texto: `short_term` es continuidad de sesión (los
+            # últimos turnos), no búsqueda por relevancia — con la
+            # implementación de referencia (`SqliteMemoryEngine`), filtrar por
+            # el mensaje actual sería comparar substring contra el literal del
+            # turno anterior, que casi nunca matchea una pregunta de
+            # seguimiento sobre otro ángulo del mismo tema.
+            items.extend(self.memory.recall(
+                MemoryScope(MemoryType.SHORT_TERM, a.id, user_id, session_id=session_id),
+                "", k=5))
+        # `long_term` sí se filtra por el mensaje: es memoria entre sesiones,
+        # donde no traer todo lo que el usuario dijo alguna vez sí importa. Con
+        # un backend real (vector, no LIKE) este filtro empieza a aportar algo
+        # más que hoy; con `SqliteMemoryEngine` es un best-effort que degrada a
+        # "nada" en silencio, lo cual es aceptable para la implementación de
+        # referencia (ver su docstring).
+        items.extend(self.memory.recall(
+            MemoryScope(MemoryType.LONG_TERM, a.id, user_id), message, k=3))
+        if not items:
+            return ""
+        lineas = "\n".join(f"- {it.text}" for it in items)
+        return ("Memoria de conversaciones previas con este usuario (contexto, "
+                f"NO es evidencia de tu wiki — no la cites como fuente):\n{lineas}")
+
+    def _recordar_turno(self, a: AgentSpec, user_id: str, session_id: str,
+                        message: str, respuesta: str) -> None:
+        item = MemoryItem(text=f"Usuario preguntó: {message}\n{a.name} respondió: {respuesta}")
+        self.memory.remember(
+            MemoryScope(MemoryType.SHORT_TERM, a.id, user_id, session_id=session_id), item)
 
     def _sin_dominio(self, message: str) -> dict:
         """Ninguna capacidad alcanzó el umbral: se dice, no se improvisa."""
@@ -297,8 +438,27 @@ class MagnusEngine:
             mode="denegado_por_permisos"))
         return resultado
 
-    def _agent_answer(self, a: AgentSpec, message: str, ctx: RAGContext,
-                      check) -> AgentResult:
+    def _denegado_por_configuracion(self, a: AgentSpec, message: str, check,
+                                    e: NamespaceGranularityError) -> AgentResult:
+        log.error("consulta denegada — configuración inválida en %s: %s", a.id, e)
+        resultado = AgentResult(
+            a.id, f"[{a.name}] No puedo consultar mi base de conocimiento: "
+                  f"error de configuración de permisos ({e}).",
+            [], 0, {"modo": "denegado_por_configuracion", "error": str(e),
+                    "guardrails": check.as_dict()})
+        self.trace_store.record(build_entry(
+            agent_id=a.id, question=message, chunks=[], evaluation=None,
+            guardrails=check.as_dict(), provider_trace={},
+            mode="denegado_por_configuracion"))
+        return resultado
+
+    def _preparar_respuesta(self, a: AgentSpec, message: str, ctx: RAGContext,
+                            check, memoria: str = "") -> AgentResult | _PendingLLM:
+        """Todo lo que NO requiere red: si esto alcanza para resolver la
+        respuesta (sin evidencia, extractivo, sin proveedor), devuelve el
+        `AgentResult` ya terminado. Si hay que llamar a un LLM, devuelve un
+        `_PendingLLM` con la request ya armada, para que `ask()` decida si
+        resolverlo en el hilo actual o en paralelo con los demás agentes."""
         sources = [c.provenance.source for c in ctx.chunks]
         base_trace = {
             "perfil_solicitado": a.model_profile,
@@ -341,9 +501,14 @@ class MagnusEngine:
                             {**base_trace, "modo": "extractivo", "motivo": motivo}),
                 check, evaluacion=None)
 
+        # La memoria NO pasa por egreso (ver aviso de privacidad en el
+        # docstring de `__init__`): se adjunta solo si esta llamada concreta
+        # va a un proveedor local, o si el egreso de LOS CHUNKS de esta
+        # consulta ya autorizó salir. No es una garantía sobre el contenido
+        # de la memoria en sí, solo reduce la superficie al caso ya cubierto.
         req = LLMRequest(
             messages=[
-                Message(Role.SYSTEM, self._system_prompt(a, check)),
+                Message(Role.SYSTEM, self._system_prompt(a, check, memoria)),
                 Message(Role.USER,
                         f"Pregunta: {message}\n\nEvidencia:\n"
                         f"{ctx.as_prompt_block(self.max_context_chars)}"),
@@ -351,34 +516,43 @@ class MagnusEngine:
             profile=a.model_profile,          # ← del agente, nunca hardcodeado
             effort=a.effort,
         )
+        return _PendingLLM(a, message, ctx, check, sources, base_trace, req)
+
+    def _resolver_pendiente(self, p: _PendingLLM) -> AgentResult:
+        """La única parte que hace red — se ejecuta en el hilo principal si
+        hay un solo agente pendiente, o en el pool de `ask()` si hay varios."""
+        a, message, ctx, check = p.agent, p.message, p.ctx, p.check
+        egreso_remoto = p.base_trace.get("egreso", {}).get("egreso_remoto", True)
         try:
             resp, trace = self.providers.complete_with_trace(
-                req, fallback_profile=a.fallback_profile,
-                only_local=not egreso.remote_allowed)
+                p.req, fallback_profile=a.fallback_profile, only_local=not egreso_remoto)
         except ProviderError as e:
             return self._finalizar(
                 a, message, ctx,
-                self._fallo_de_proveedor(a, ctx, sources, base_trace, e),
+                self._fallo_de_proveedor(a, ctx, p.sources, p.base_trace, e),
                 check, evaluacion=None)
 
         self._log_trace(a, trace)
         evaluacion = self.evaluator.evaluate(answer=resp.text, ctx=ctx, rigor=a.rigor)
         texto, modo = self._aplicar_politica(a, resp.text, ctx, evaluacion)
         resultado = AgentResult(
-            a.id, texto, sources, len(ctx.chunks),
-            {**base_trace, "modo": modo, **trace.as_dict(),
+            a.id, texto, p.sources, len(ctx.chunks),
+            {**p.base_trace, "modo": modo, **trace.as_dict(),
              "evaluacion": evaluacion.as_dict()})
         return self._finalizar(a, message, ctx, resultado, check, evaluacion)
 
     @staticmethod
-    def _system_prompt(a: AgentSpec, check) -> str:
+    def _system_prompt(a: AgentSpec, check, memoria: str = "") -> str:
         partes = [f"Eres {a.name}. Responde SOLO con la evidencia dada, "
                   "en español, citando la fuente entre corchetes."]
         # Los límites del dominio entran en el prompt, además de anexarse a la
         # respuesta: es más barato que el modelo no cruce la línea a corregirlo
         # después.
         partes.extend(check.avisos)
-        return " ".join(partes)
+        prompt = " ".join(partes)
+        if memoria:
+            prompt += "\n\n" + memoria
+        return prompt
 
     # -- política ante una evaluación fallida (paso 3.3) --------------------
     def _aplicar_politica(self, a: AgentSpec, texto: str, ctx: RAGContext,
@@ -414,14 +588,19 @@ class MagnusEngine:
                    resultado: AgentResult, check, evaluacion) -> AgentResult:
         if check.avisos and resultado.n_chunks > 0:
             resultado.answer += "\n\n" + "\n".join(f"— {av}" for av in check.avisos)
-        self.trace_store.record(build_entry(
+        entry = build_entry(
             agent_id=a.id, question=message, chunks=ctx.chunks,
             evaluation=evaluacion.as_dict() if evaluacion is not None else None,
             guardrails=check.as_dict(),
             provider_trace={k: v for k, v in resultado.trace.items()
                             if k in ("perfil_solicitado", "proveedor_final",
                                      "modelo_final", "fallback_aplicado")},
-            mode=resultado.trace.get("modo", "desconocido")))
+            mode=resultado.trace.get("modo", "desconocido"))
+        # `_finalizar` puede correr en un hilo del pool de `ask()` (paso 2.2):
+        # el lock evita que dos agentes resueltos en paralelo intercalen
+        # escrituras en el mismo archivo JSONL de `trace_store`.
+        with self._trace_lock:
+            self.trace_store.record(entry)
         return resultado
 
     # -- proveedor: disponibilidad, degradación y traza --------------------

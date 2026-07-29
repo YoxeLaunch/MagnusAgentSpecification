@@ -35,6 +35,8 @@ from dataclasses import dataclass, field
 _STOP = {
     "de", "la", "el", "en", "y", "a", "los", "las", "un", "una", "que", "con",
     "por", "para", "del", "al", "se", "su", "sus", "o", "es", "como", "mas",
+    "mi", "tu", "yo", "me", "te", "le", "lo", "no", "si", "tengo", "quiero",
+    "este", "esta", "ese", "esa", "esto", "eso", "aquel", "aquella",
     "the", "of", "to", "and", "in", "for", "on", "is", "are",
 }
 

@@ -70,3 +70,30 @@ class MemoryEngine(Protocol):
     def list_proposals(self, *, status: str | None = None) -> list[dict]: ...
     def approve_proposal(self, proposal_id: str, reviewer: str) -> None: ...
     def reject_proposal(self, proposal_id: str, reviewer: str, reason: str) -> None: ...
+
+
+class NullMemoryEngine:
+    """No recuerda nada. Comportamiento por defecto de `MagnusEngine` (mismo
+    patrón que `NullTraceStore` en `orchestration/audit.py`): la memoria es un
+    colaborador opt-in, nunca un requisito para que el motor funcione."""
+
+    def remember(self, scope: MemoryScope, item: MemoryItem) -> None:
+        return None
+
+    def recall(self, scope: MemoryScope, query: str, k: int = 5) -> list[MemoryItem]:
+        return []
+
+    def consolidate(self, session_id: str) -> ConsolidationReport:
+        return ConsolidationReport(session_id, 0, "memoria desactivada (NullMemoryEngine)")
+
+    def propose_semantic(self, agent_id: str, fact: SemanticFact) -> str:
+        return ""
+
+    def list_proposals(self, *, status: str | None = None) -> list[dict]:
+        return []
+
+    def approve_proposal(self, proposal_id: str, reviewer: str) -> None:
+        return None
+
+    def reject_proposal(self, proposal_id: str, reviewer: str, reason: str) -> None:
+        return None
